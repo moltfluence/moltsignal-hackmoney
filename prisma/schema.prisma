@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  SETTLING
+  SETTLED
+  FAILED
+}
+
+enum YellowSessionStatus {
+  OPENING
+  OPEN
+  CLOSED
+  FAILED
+}
+
+model Agent {
+  id             Int                    @id @default(autoincrement())
+  wallet         String                 @unique
+  moltbookHandle String
+  createdAt      DateTime               @default(now())
+  currentAds     Int                    @default(0)
+  participants   CampaignParticipant[]
+  proofs         ProofSubmission[]
+  scoreRows      ScoreRow[]
+  yellowSessions YellowSession[]
+  treasuryActions TreasuryAction[]
+
+  @@map("agents")
+}
+
+model Campaign {
+  id             Int                    @id @default(autoincrement())
+  chainCampaignId BigInt                @unique
+  sponsorWallet  String
+  objective      String
+  budgetWei      String
+  premium        Boolean                @default(false)
+  yellowEnabled  Boolean                @default(false)
+  endTime        DateTime
+  status         CampaignStatus         @default(ACTIVE)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  participants   CampaignParticipant[]
+  proofs         ProofSubmission[]
+  scoreRuns      ScoreRun[]
+  scoreRows      ScoreRow[]
+  settlements    Settlement[]
+  yellowSessions YellowSession[]
+  treasuryActions TreasuryAction[]
+
+  @@map("campaigns")
+}
+
+model CampaignParticipant {
+  id         Int      @id @default(autoincrement())
+  campaignId Int
+  agentId    Int
+  joinedAt   DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, agentId])
+  @@map("campaign_participants")
+}
+
+model ProofSubmission {
+  id                  Int      @id @default(autoincrement())
+  campaignId          Int
+  agentId             Int
+  postUrl             String
+  claimedMetrics      Json?
+  fetchedSnapshotJson Json
+  proofHash           String
+  valid               Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  campaign            Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  agent               Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  microRewards        MicroReward[]
+
+  @@index([campaignId])
+  @@map("proof_submissions")
+}
+
+model ScoreRun {
+  id            Int        @id @default(autoincrement())
+  campaignId    Int
+  weightsJson   Json
+  scorerVersion String
+  createdAt     DateTime   @default(now())
+  campaign      Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  rows          ScoreRow[]
+
+  @@map("score_runs")
+}
+
+model ScoreRow {
+  id           Int      @id @default(autoincrement())
+  scoreRunId   Int
+  campaignId   Int
+  agentId      Int
+  distribution Float
+  engagement   Float
+  reliability  Float
+  network      Float
+  adsTotal     Int
+  payoutWei    String
+  proofHash    String
+  createdAt    DateTime @default(now())
+  scoreRun     ScoreRun @relation(fields: [scoreRunId], references: [id], onDelete: Cascade)
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  agent        Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("score_rows")
+}
+
+model Settlement {
+  id           Int      @id @default(autoincrement())
+  campaignId   Int
+  txHash       String   @unique
+  blockNumber  BigInt
+  oracleSigner String
+  createdAt    DateTime @default(now())
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("settlements")
+}
+
+model YellowSession {
+  id          Int                @id @default(autoincrement())
+  campaignId  Int
+  agentId     Int
+  sessionId   String
+  status      YellowSessionStatus @default(OPENING)
+  settleChainId Int?
+  settleTxHash String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  campaign    Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  agent       Agent              @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  microRewards MicroReward[]
+
+  @@unique([campaignId, agentId])
+  @@map("yellow_sessions")
+}
+
+model MicroReward {
+  id              Int          @id @default(autoincrement())
+  yellowSessionId Int
+  proofSubmissionId Int?
+  amount          String
+  tokenSymbol     String
+  reason          String
+  yellowTransferId String?
+  createdAt       DateTime     @default(now())
+  yellowSession   YellowSession @relation(fields: [yellowSessionId], references: [id], onDelete: Cascade)
+  proofSubmission ProofSubmission? @relation(fields: [proofSubmissionId], references: [id], onDelete: SetNull)
+
+  @@index([proofSubmissionId])
+  @@map("micro_rewards")
+}
+
+model TreasuryAction {
+  id         Int      @id @default(autoincrement())
+  campaignId Int
+  agentId    Int
+  actionType String
+  chainId    Int
+  txHash     String
+  detailsJson Json?
+  createdAt  DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("treasury_actions")
+}

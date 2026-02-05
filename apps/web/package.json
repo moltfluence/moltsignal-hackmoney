@@ -1,0 +1,29 @@
+{
+  "name": "@molt/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@molt/shared": "workspace:*",
+    "@erc7824/nitrolite": "^0.5.0",
+    "@prisma/client": "^6.2.1",
+    "next": "15.1.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "viem": "^2.21.53",
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.3"
+  }
+}
