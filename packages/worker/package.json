@@ -1,0 +1,25 @@
+{
+  "name": "@molt/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "settle": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@molt/shared": "workspace:*",
+    "@prisma/client": "^6.2.1",
+    "@erc7824/nitrolite": "^0.5.0",
+    "dotenv": "^16.4.7",
+    "viem": "^2.21.53",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13"
+  }
+}
