@@ -13,6 +13,7 @@ export const ORCHESTRATION_STAGES = [
   "compute-scores",
   "sign-settlement",
   "submit-settlement",
+  "close-yellow-sessions",
   "sign-attestation",
   "submit-attestation",
   "persist-results",
