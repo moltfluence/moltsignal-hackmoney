@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { formatUnits } from "viem";
 import type {
   Agent,
   AgentMetricPoint,
@@ -26,10 +27,20 @@ function relativeTime(date: Date): string {
   return `${days}d ago`;
 }
 
+function clampPct(value: unknown, fallback = 0): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(100, value));
+}
+
 function weiToUsdc(wei: string): number {
   // Arc USDC has 18 decimals
-  const raw = Number(BigInt(wei)) / 1e18;
-  return Math.round(raw * 100) / 100;
+  try {
+    const raw = Number.parseFloat(formatUnits(BigInt(wei), 18));
+    if (!Number.isFinite(raw)) return 0;
+    return Math.round(raw * 100) / 100;
+  } catch {
+    return 0;
+  }
 }
 
 export async function getAgents(): Promise<Agent[]> {
@@ -57,12 +68,10 @@ export async function getAgents(): Promise<Agent[]> {
     const prevAds = previous ? previous.adsTotal / 100 : adsScore;
     const delta = Number((adsScore - prevAds).toFixed(1));
 
-    // Normalize breakdown to percentages
-    const rawD = latest?.distribution ?? 1;
-    const rawE = latest?.engagement ?? 1;
-    const rawR = latest?.reliability ?? 1;
-    const rawN = latest?.network ?? 1;
-    const total = rawD + rawE + rawR + rawN || 1;
+    const rawD = clampPct(latest?.distribution, 0);
+    const rawE = clampPct(latest?.engagement, 0);
+    const rawR = clampPct(latest?.reliability, 0);
+    const rawN = clampPct(latest?.network, 0);
 
     // Momentum: average rate of change per score row
     let momentum = 0;
@@ -115,13 +124,13 @@ export async function getAgents(): Promise<Agent[]> {
       adsScore,
       delta,
       adsMomentum: momentum,
-      reliability: total > 0 ? Math.round((rawR / total) * 100) : 80,
+      reliability: Math.round(rawR),
       cpv,
       breakdown: {
-        distribution: Math.round((rawD / total) * 100),
-        engagement: Math.round((rawE / total) * 100),
-        reliability: Math.round((rawR / total) * 100),
-        network: Math.round((rawN / total) * 100),
+        distribution: Math.round(rawD),
+        engagement: Math.round(rawE),
+        reliability: Math.round(rawR),
+        network: Math.round(rawN),
       },
       metrics,
       campaigns,
@@ -164,11 +173,10 @@ export async function getAgentByWallet(wallet: string): Promise<Agent | null> {
   const prevAds = previous ? previous.adsTotal / 100 : adsScore;
   const delta = Number((adsScore - prevAds).toFixed(1));
 
-  const rawD = latest?.distribution ?? 1;
-  const rawE = latest?.engagement ?? 1;
-  const rawR = latest?.reliability ?? 1;
-  const rawN = latest?.network ?? 1;
-  const total = rawD + rawE + rawR + rawN || 1;
+  const rawD = clampPct(latest?.distribution, 0);
+  const rawE = clampPct(latest?.engagement, 0);
+  const rawR = clampPct(latest?.reliability, 0);
+  const rawN = clampPct(latest?.network, 0);
 
   let momentum = 0;
   if (scores.length >= 2) {
@@ -222,13 +230,13 @@ export async function getAgentByWallet(wallet: string): Promise<Agent | null> {
     adsScore,
     delta,
     adsMomentum: momentum,
-    reliability: total > 0 ? Math.round((rawR / total) * 100) : 80,
+    reliability: Math.round(rawR),
     cpv,
     breakdown: {
-      distribution: Math.round((rawD / total) * 100),
-      engagement: Math.round((rawE / total) * 100),
-      reliability: Math.round((rawR / total) * 100),
-      network: Math.round((rawN / total) * 100),
+      distribution: Math.round(rawD),
+      engagement: Math.round(rawE),
+      reliability: Math.round(rawR),
+      network: Math.round(rawN),
     },
     metrics,
     campaigns,
@@ -377,6 +385,83 @@ export function buildNetworkData(agents: Agent[]): {
   }));
 
   return { nodes, edges };
+}
+
+export type YellowSessionInfo = {
+  id: number;
+  sessionId: string;
+  agentName: string;
+  agentWallet: string;
+  status: string;
+  settleTxHash: string | null;
+  microRewards: {
+    id: number;
+    amount: string;
+    tokenSymbol: string;
+    reason: string;
+    yellowTransferId: string | null;
+    createdAt: string;
+  }[];
+};
+
+export type Erc8004FeedbackInfo = {
+  id: number;
+  agentName: string;
+  nftTokenId: string;
+  value: number;
+  tag1: string;
+  tag2: string;
+  txHash: string;
+  createdAt: string;
+};
+
+export async function getYellowSessionsForCampaign(campaignId: number): Promise<YellowSessionInfo[]> {
+  const sessions = await db.yellowSession.findMany({
+    where: { campaignId },
+    include: {
+      agent: true,
+      microRewards: {
+        orderBy: { createdAt: "desc" },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return sessions.map((s) => ({
+    id: s.id,
+    sessionId: s.sessionId,
+    agentName: s.agent.moltbookHandle,
+    agentWallet: s.agent.wallet,
+    status: s.status,
+    settleTxHash: s.settleTxHash,
+    microRewards: s.microRewards.map((r) => ({
+      id: r.id,
+      amount: r.amount,
+      tokenSymbol: r.tokenSymbol,
+      reason: r.reason,
+      yellowTransferId: r.yellowTransferId,
+      createdAt: relativeTime(r.createdAt),
+    })),
+  }));
+}
+
+export async function getErc8004FeedbackForCampaign(campaignId: number): Promise<Erc8004FeedbackInfo[]> {
+  const feedback = await db.erc8004Feedback.findMany({
+    where: { campaignId },
+    include: { agent: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return feedback.map((f) => ({
+    id: f.id,
+    agentName: f.agent.moltbookHandle,
+    nftTokenId: f.nftTokenId.toString(),
+    value: f.value,
+    tag1: f.tag1,
+    tag2: f.tag2,
+    txHash: f.txHash,
+    createdAt: relativeTime(f.createdAt),
+  }));
 }
 
 export async function getActivityFeed(): Promise<ActivityItem[]> {
