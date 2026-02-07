@@ -1,5 +1,6 @@
 import {
   ADS_V1_WEIGHTS,
+  agentRegistry8004Abi,
   campaignEscrowAbi,
   computeAdsScores,
   hashAttestationRows,
@@ -9,7 +10,7 @@ import {
   reputationRegistry8004Abi,
   type AgentScoreInput,
 } from "@molt/shared";
-import { createPublicClient, createWalletClient, defineChain, http } from "viem";
+import { createPublicClient, createWalletClient, decodeEventLog, defineChain, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createOrchestrationRunner } from "./agents/runner.js";
 import { getYellowSessionAgent, isYellowEnabled } from "./agents/YellowSessionAgent.js";
@@ -399,6 +400,57 @@ export async function settleCampaign(campaignId: number) {
           (p: { agent: { wallet: string } }) =>
             p.agent.wallet.toLowerCase() === row.wallet.toLowerCase(),
         )?.agent;
+
+        // JIT retry: if agent has no nftTokenId but we stored their registration signature,
+        // attempt the ERC-8004 Identity Registry mint now before giving feedback.
+        if (!agent?.nftTokenId && agent?.registrationSig) {
+          try {
+            const agentUri = `data:application/json,${encodeURIComponent(
+              JSON.stringify({ name: agent.moltbookHandle, wallet: agent.wallet })
+            )}`;
+
+            const regTx = await oracleClient.writeContract({
+              address: config.agentRegistryAddress,
+              abi: agentRegistry8004Abi,
+              functionName: "registerFor",
+              args: [
+                agent.wallet as `0x${string}`,
+                agent.moltbookHandle,
+                agentUri,
+                agent.registrationSig as `0x${string}`,
+              ],
+              account: oracleAccount,
+            });
+            const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regTx });
+
+            for (const log of regReceipt.logs) {
+              try {
+                const decoded = decodeEventLog({
+                  abi: agentRegistry8004Abi,
+                  data: log.data,
+                  topics: log.topics,
+                });
+                if (decoded.eventName === "Registered") {
+                  const mintedId = (decoded.args as { agentId: bigint }).agentId;
+                  agent.nftTokenId = mintedId;
+                  await prisma.agent.update({
+                    where: { id: agent.id },
+                    data: { nftTokenId: mintedId, agentUri },
+                  });
+                  break;
+                }
+              } catch {
+                continue;
+              }
+            }
+          } catch (err) {
+            console.error(
+              `[settleCampaign] JIT ERC-8004 registration failed for agent ${agent.id}:`,
+              err,
+            );
+          }
+        }
+
         if (!agent?.nftTokenId) {
           failed++;
           continue;
