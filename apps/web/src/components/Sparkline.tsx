@@ -6,6 +6,11 @@ export default function Sparkline({ data }: SparklineProps) {
   const width = 260;
   const height = 56;
   const padding = 6;
+
+  if (!data || data.length === 0) {
+    return <svg width={width} height={height} className="sparkline" aria-hidden="true" />;
+  }
+
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;

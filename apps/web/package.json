@@ -9,24 +9,27 @@
     "start": "next start"
   },
   "dependencies": {
-    "@molt/shared": "workspace:*",
     "@erc7824/nitrolite": "^0.5.0",
+    "@molt/shared": "workspace:*",
     "@prisma/client": "^6.2.1",
+    "d3": "^7.9.0",
     "next": "15.1.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "d3": "^7.9.0",
     "recharts": "^2.15.0",
     "viem": "^2.21.53",
     "ws": "^8.18.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/d3": "^7.4.3",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@types/ws": "^8.5.13",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.7.3"
   }
 }
