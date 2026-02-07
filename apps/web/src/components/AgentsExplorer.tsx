@@ -120,6 +120,9 @@ export default function AgentsExplorer({ agents, networkEdges }: AgentsExplorerP
             onChange={(event) => setAdsMin(Number(event.target.value))}
           />
         </div>
+        <button type="button" className="icon-button" disabled>
+          Export
+        </button>
       </div>
 
       <div className="agents-content">
@@ -193,6 +196,9 @@ export default function AgentsExplorer({ agents, networkEdges }: AgentsExplorerP
                 <div className="row-subtitle">No network connections yet</div>
               )}
             </div>
+            <button type="button" className="btn btn-secondary full">
+              Create campaign with this agent
+            </button>
           </div>
         )}
       </div>

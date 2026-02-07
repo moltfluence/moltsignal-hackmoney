@@ -2,8 +2,8 @@ node_modules
 .next
 dist
 coverage
-.env
-.env.local
+# .env
+# .env.local
 pnpm-lock.yaml
 *.tsbuildinfo
 .vercel
