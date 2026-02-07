@@ -16,6 +16,7 @@ export const ORCHESTRATION_STAGES = [
   "close-yellow-sessions",
   "sign-attestation",
   "submit-attestation",
+  "submit-erc8004-feedback",
   "persist-results",
 ] as const;
 

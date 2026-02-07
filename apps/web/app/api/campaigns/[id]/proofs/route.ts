@@ -1,4 +1,4 @@
-import { fetchMoltbookSnapshot, hashCanonicalJson, proofDigest, submitProofSchema } from "@molt/shared";
+import { fetchMoltbookSnapshotV2, hashCanonicalJson, proofDigest, submitProofSchema } from "@molt/shared";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAllowlist, getChainId } from "@/lib/env";
@@ -52,7 +52,15 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     let snapshot;
     let valid = true;
     try {
-      snapshot = await fetchMoltbookSnapshot(payload.postUrl, getAllowlist());
+      const apiKey = process.env.MOLTBOOK_API_KEY ?? "";
+      snapshot = await fetchMoltbookSnapshotV2(payload.postUrl, getAllowlist(), apiKey ? {
+        apiKey,
+        baseUrl: process.env.MOLTBOOK_API_BASE ?? "https://www.moltbook.com/api/v1",
+        commentsLimit: Number(process.env.MOLTBOOK_COMMENTS_LIMIT ?? 200),
+        profileLookupLimit: Number(process.env.MOLTBOOK_PROFILE_LOOKUP_LIMIT ?? 25),
+        enableVotesList: (process.env.MOLTBOOK_ENABLE_VOTES_LIST ?? "false").toLowerCase() === "true",
+        enableRepostsList: (process.env.MOLTBOOK_ENABLE_REPOSTS_LIST ?? "false").toLowerCase() === "true",
+      } : undefined);
     } catch (error) {
       snapshot = {
         impressions: 0,
@@ -60,6 +68,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         comments: 0,
         reposts: 0,
         interactingAgents: [],
+        interactions: { actors: [], totals: { uniqueActors: 0, totalSignals: 0 } },
         fetchedAt: new Date().toISOString(),
         sourceUrl: payload.postUrl,
         error: (error as Error).message,

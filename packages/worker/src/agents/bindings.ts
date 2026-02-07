@@ -26,7 +26,10 @@ function defaultAgentForStage(stage: OrchestrationStage) {
     case "sign-attestation":
       return "oracle-signer" as const;
     case "submit-settlement":
+    case "close-yellow-sessions":
       return "settlement-executor" as const;
+    case "submit-erc8004-feedback":
+      return "oracle-signer" as const;
     case "submit-attestation":
     case "persist-results":
       return "reputation-attestor" as const;

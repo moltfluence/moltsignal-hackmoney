@@ -3,6 +3,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createOnchainCampaign } from "@/lib/chain";
 
+function assertOperator(req: Request) {
+  const want = process.env.OPERATOR_API_KEY ?? "";
+  const got = req.headers.get("x-operator-key") ?? "";
+  if (!want || got !== want) {
+    throw new Error("unauthorized");
+  }
+}
+
 export async function GET() {
   const campaigns = await db.campaign.findMany({
     orderBy: { createdAt: "desc" },
@@ -14,6 +22,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    // Campaign creation spends the server's sponsor key; keep it operator-only.
+    assertOperator(req);
+
     const payload = createCampaignSchema.parse(await req.json());
     const endTime = new Date(payload.endTime);
 
@@ -32,6 +43,7 @@ export async function POST(req: Request) {
         budgetWei: onchain.budgetWei,
         premium: payload.premium,
         yellowEnabled: payload.yellowEnabled,
+        minProofsPerAgent: payload.minProofsPerAgent ?? 1,
         endTime,
         status: "ACTIVE",
       },
@@ -42,6 +54,8 @@ export async function POST(req: Request) {
       txHash: onchain.txHash,
     });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    const msg = (error as Error).message || "error";
+    const status = msg === "unauthorized" ? 401 : 400;
+    return NextResponse.json({ error: msg }, { status });
   }
 }

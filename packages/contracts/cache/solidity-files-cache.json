@@ -8,6 +8,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -49,6 +50,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -87,6 +89,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -123,6 +126,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -161,6 +165,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -201,6 +206,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -237,6 +243,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -277,6 +284,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -313,6 +321,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -352,6 +361,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -390,6 +400,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -426,6 +437,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -464,6 +476,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -500,6 +513,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -536,6 +550,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -576,6 +591,7 @@
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
+          "viaIR": true,
           "optimizer": {
             "enabled": true,
             "runs": 200
@@ -606,6 +622,403 @@
       "artifacts": [
         "IERC20Like",
         "StakeGate"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/packages/contracts/contracts/AgentRegistry8004.sol": {
+      "lastModificationDate": 1770465657133,
+      "contentHash": "ce819600beeaf23ad31ade52d57a7cd3",
+      "sourceName": "contracts/AgentRegistry8004.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+        "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "AgentRegistry8004"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/node_modules/.pnpm/@openzeppelin+contracts@5.4.0/node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol": {
+      "lastModificationDate": 1770297426599,
+      "contentHash": "522ec023bce510c30dfbf61584f5a190",
+      "sourceName": "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC721.sol",
+        "./extensions/IERC721Metadata.sol",
+        "./utils/ERC721Utils.sol",
+        "../../utils/Context.sol",
+        "../../utils/Strings.sol",
+        "../../utils/introspection/ERC165.sol",
+        "../../interfaces/draft-IERC6093.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ERC721"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/node_modules/.pnpm/@openzeppelin+contracts@5.4.0/node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol": {
+      "lastModificationDate": 1770297425869,
+      "contentHash": "0906d06dca25210d4696dcef6dad2909",
+      "sourceName": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./IERC165.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ERC165"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/node_modules/.pnpm/@openzeppelin+contracts@5.4.0/node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol": {
+      "lastModificationDate": 1770297427843,
+      "contentHash": "f62e11dbd302e17a5621a1438f4e054c",
+      "sourceName": "@openzeppelin/contracts/token/ERC721/IERC721.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../../utils/introspection/IERC165.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.2"
+      ],
+      "artifacts": [
+        "IERC721"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/node_modules/.pnpm/@openzeppelin+contracts@5.4.0/node_modules/@openzeppelin/contracts/interfaces/draft-IERC6093.sol": {
+      "lastModificationDate": 1770297425665,
+      "contentHash": "5041977bbe908de2e6ed0270447f79ad",
+      "sourceName": "@openzeppelin/contracts/interfaces/draft-IERC6093.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.8.4"
+      ],
+      "artifacts": [
+        "IERC1155Errors",
+        "IERC20Errors",
+        "IERC721Errors"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/node_modules/.pnpm/@openzeppelin+contracts@5.4.0/node_modules/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol": {
+      "lastModificationDate": 1770297427893,
+      "contentHash": "136c64eca25bcb8a68f43ac6605559f9",
+      "sourceName": "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../IERC721.sol"
+      ],
+      "versionPragmas": [
+        ">=0.6.2"
+      ],
+      "artifacts": [
+        "IERC721Metadata"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/node_modules/.pnpm/@openzeppelin+contracts@5.4.0/node_modules/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol": {
+      "lastModificationDate": 1770297426763,
+      "contentHash": "4cefad279a37c895b709bce2b901816e",
+      "sourceName": "@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../IERC721Receiver.sol",
+        "../../../interfaces/draft-IERC6093.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ERC721Utils"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/node_modules/.pnpm/@openzeppelin+contracts@5.4.0/node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol": {
+      "lastModificationDate": 1770297427415,
+      "contentHash": "7074c93b1ea0a122063f26ddd1db1032",
+      "sourceName": "@openzeppelin/contracts/utils/introspection/IERC165.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.4.16"
+      ],
+      "artifacts": [
+        "IERC165"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/node_modules/.pnpm/@openzeppelin+contracts@5.4.0/node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol": {
+      "lastModificationDate": 1770297427913,
+      "contentHash": "d61660a41ce200e99816e4734f7fd202",
+      "sourceName": "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.5.0"
+      ],
+      "artifacts": [
+        "IERC721Receiver"
+      ]
+    },
+    "/Users/ayush/Documents/hackathons/monad/ethglobal-hackmoney/packages/contracts/contracts/ReputationRegistry8004.sol": {
+      "lastModificationDate": 1770453905442,
+      "contentHash": "2a2d833bb2d185efcbd7e9174ddeddd6",
+      "sourceName": "contracts/ReputationRegistry8004.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/Ownable.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "IAgentRegistry8004",
+        "ReputationRegistry8004"
       ]
     }
   }

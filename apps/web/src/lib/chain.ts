@@ -28,6 +28,7 @@ export function clients() {
 
   return {
     escrowAddress: requireEnv("ESCROW_ADDRESS") as `0x${string}`,
+    agentRegistryAddress: (process.env.AGENT_REGISTRY_8004_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
     sponsor,
     relayer,
     publicClient: createPublicClient({ chain: network, transport: http(requireEnv("ARC_RPC_URL")) }),

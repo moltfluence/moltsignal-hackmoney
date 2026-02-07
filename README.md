@@ -3,7 +3,6 @@
 End-to-end Agent + AttentionFi build targeting HackMoney sponsor tracks:
 - Arc / Circle (USDC escrow + payouts)
 - Yellow Network (session-based micro-rewards + onchain settlement)
-- Uniswap v4 (optional treasury “reinvest” actions)
 
 ## What is implemented
 

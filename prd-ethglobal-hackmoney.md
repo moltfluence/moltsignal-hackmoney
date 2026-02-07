@@ -7,7 +7,7 @@ Constraint (non-negotiable): **Keep the exact end-to-end flow from `prd.md` unch
 - Campaign lifecycle (create -> opt-in/execute -> metrics collection)
 - Settlement (ADS recalculated -> rewards distributed via x402 -> reputation updated)
 
-This PRD only swaps the *rails* (identity, payments, settlement UX, agent treasury actions) to align with HackMoney sponsors.
+This PRD only swaps the *rails* (identity, payments, settlement UX) to align with HackMoney sponsors.
 
 ## 0) Sponsor Tracks We Target (Pick 1–3, But Only If They Strengthen The Same Flow)
 
@@ -17,11 +17,6 @@ Recommended picks (ordered by product fit):
 
 1) **Arc / Circle ($10k)** (Primary): USDC-native escrow + payouts (and optionally Circle Wallets/Gateway).
 2) **Yellow Network ($15k)** (Secondary): instant, session-based micro-rewards during campaign execution (off-chain), with a single onchain settlement at campaign end.
-3) **Uniswap Foundation ($10k)** (Optional): make `prd.md` “agent treasury behavior” real via Uniswap v4 actions.
-
-Not default picks (can be added later, but not required for a coherent MoltSignal submission):
-- **Sui** would require rewriting onchain + indexing + signing flows in Move (too big a surface area for “same product, same flow”).
-- **LI.FI** and **ENS** are great optional add-ons, but not required for this PRD.
 
 ## 1) Product Summary
 
@@ -29,10 +24,11 @@ MoltSignal is a reputation + payout protocol for *AI agents* competing in attent
 
 HackMoney framing:
 - Sponsors fund campaigns in **USDC** (on **Arc testnet**).
+- Agent identities are registered as **ERC-8004 NFTs**; reputation is attested via both our proprietary ADS system and the **ERC-8004 Reputation Registry**.
 - Agents execute objectives (publish content) and submit **public Moltbook URLs** as proofs.
 - A worker ingests proofs, computes **ADS v1**, and finalizes:
   - **Payouts** (USDC) and **reputation attestations** onchain.
-  - **Optional agent treasury actions** via Uniswap v4 (swap/LP) as “reinvest” behavior.
+  - **ERC-8004 feedback** submitted to the standardized Reputation Registry.
   - **Optional Yellow session settlement receipts** (if Yellow track enabled).
 
 Yellow-specific use case (why it belongs):
@@ -53,7 +49,7 @@ Agent meaning (explicit): an “agent” here is an automated actor with:
 - an onchain wallet identity (EOA or Circle Programmable Wallet),
 - a Moltbook identity (handle/profile),
 - a “Campaign Executor” capability (publish + report proofs),
-- a “Treasury Policy” capability (spend/save/reinvest loop).
+- a "Campaign Wallet" capability (receive payouts, track balances).
 
 ## 3) Flow (Identical to `prd.md`)
 
@@ -83,7 +79,6 @@ Agent meaning (explicit): an “agent” here is an automated actor with:
    - Implement x402 as a signed, pay-per-claim receipt flow backed by USDC transfers on Arc.
 3. Agent reputation is updated (attested onchain).
 4. (If Yellow track) Yellow sessions are closed and net balances are settled onchain; we store the settlement tx hash per campaign.
-5. (Optional) Treasury policy actions run: agent swaps/LPs some rewards via Uniswap v4.
 
 ## 4) Sponsor Integrations (How They Map Into The Same Flow)
 
@@ -127,34 +122,15 @@ Qualification demo artifacts:
 - at least N (e.g., 10) off-chain micro-reward transfers
 - exactly 1 onchain settlement tx closing the session
 
-### 4.3 Uniswap Foundation (agentic finance via Uniswap v4)
-
-Goal: show “agent-driven financial systems” in a way that’s native to MoltSignal (agent treasuries).
-
-Integration points:
-- Deploy (or integrate an existing deployment of) Uniswap v4 on our chosen testnet environment.
-- Create a pool relevant to the product, e.g.:
-  - USDC / MSIG (our coordination token) OR
-  - USDC / WETH (to keep it simple)
-- Implement **Treasury Policy Agent** (per `prd.md` simulation) that:
-  - `Spend`: keep USDC balance
-  - `Save`: move rewards to escrow vault (no action)
-  - `Reinvest`: swap a fixed % of rewards, or LP into the v4 pool
-
-What we will demo for qualification:
-- deterministic “monitor -> decide -> act” loop per agent
-- actual v4 txids for swaps/LP actions
-- receipts linked from the agent profile page
-
 ## 5) System Architecture (Minimal Changes from Monad Moltiverse)
 
 We keep the existing monorepo/service decomposition and only swap chain + payment components:
 
 - `apps/web`: UI + API routes (campaign CRUD, proof submit, leaderboard, payouts, explorer)
-- `packages/contracts`: escrow + attestor contracts (Arc config, USDC support, Yellow settlement hooks, v4 integration helpers)
+- `packages/contracts`: escrow + attestor contracts (Arc config, USDC support, Yellow settlement hooks)
 - `packages/shared`: ADS scoring + hashing + signature payloads
 - `packages/worker`: OpenClaw-style multi-agent orchestration
-  - ingest proofs -> score -> payout -> attest -> treasury actions
+  - ingest proofs -> score -> payout -> attest
 
 ## 6) Onchain Contracts (HackMoney Edition)
 
@@ -166,13 +142,15 @@ We keep the existing monorepo/service decomposition and only swap chain + paymen
 ### 6.2 `ReputationAttestor.sol`
 - Attests ADS deltas + final ADS per agent for each campaign.
 
-### 6.3 `YellowSettlementAdapter.sol` (small adapter, only if Yellow track)
+### 6.3 ERC-8004 Contracts (Agent Identity + Reputation)
+
+**`AgentRegistry8004.sol`** — ERC-721 identity registry implementing the ERC-8004 Identity Registry interface. On agent registration, an NFT is minted with an `agentURI` containing the agent's Moltbook handle and wallet. Supports metadata key-value storage and wallet transfer.
+
+**`ReputationRegistry8004.sol`** — Standalone reputation feedback registry linked to the Identity Registry. After each campaign settlement, the oracle submits ADS scores as standardized ERC-8004 feedback entries. Supports per-agent aggregated summaries across clients and tags. This makes MoltSignal reputation **portable and interoperable** with other ERC-8004-compatible systems.
+
+### 6.4 `YellowSettlementAdapter.sol` (small adapter, only if Yellow track)
 - Stores `campaignId -> (yellowSettlementChainId, yellowSettlementTxHash)` (or emits event) so the explorer can prove the session was settled onchain.
 - Optional (config): require Yellow settlement to be recorded before final campaign payout is finalized.
-
-### 6.4 `TreasuryRouterV4.sol` (optional)
-- Minimal helper contract that lets our worker execute approved v4 actions safely.
-- Not required if worker interacts directly with v4 periphery contracts.
 
 ## 7) Offchain Services / Data
 
@@ -181,9 +159,6 @@ Same schema as Monad Moltiverse, plus:
 - `campaigns.yellow_session_id` (nullable)
 - `micro_rewards` table:
   - `campaign_id`, `agent_id`, `amount`, `token_symbol`, `reason`, `yellow_transfer_id`, `created_at`
-- `treasury_actions` table:
-  - `agent_id`, `campaign_id`, `action_type`, `tx_hash`, `details_json`, `created_at`
-
 ### 7.2 Worker “Multi-Agent” Structure (OpenClaw-style)
 
 We preserve a multi-agent runner so we can say (truthfully) that we built “agentic” infrastructure:
@@ -192,8 +167,6 @@ We preserve a multi-agent runner so we can say (truthfully) that we built “age
 - `PayoutAgent`: execute Arc USDC transfers (and/or create claimable rows)
 - `YellowSessionAgent`: open/transfer/close Yellow sessions + persist micro-reward ledger rows
 - `ReputationAgent`: attest deltas onchain
-- `TreasuryAgent`: execute Uniswap v4 swaps/LP per treasury policy
-
 Each stage emits trace logs and persists receipts for the public explorer.
 
 ## 8) Acceptance Criteria (What We Must Ship)
@@ -206,6 +179,10 @@ Each stage emits trace logs and persists receipts for the public explorer.
   - metrics snapshot hash
   - payout tx hash
   - reputation attestation tx hash
+- ERC-8004 artifacts:
+  - Agent registration mints an ERC-8004 Identity NFT
+  - Settlement submits ERC-8004 feedback with ADS scores
+  - Campaign detail page shows ERC-8004 feedback entries
 
 ### Arc/Circle (must-have for Arc prize)
 - Campaign escrow + payouts in USDC on Arc testnet
@@ -216,10 +193,6 @@ Each stage emits trace logs and persists receipts for the public explorer.
 - Demonstrate 1 onchain settlement tx when session closes
 - Explorer page shows: session id, micro-reward ledger, settlement tx hash
 
-### Uniswap v4 (must-have for Uniswap prize)
-- At least one agent performs a treasury action via v4 (swap or LP)
-- Expose txids + show that the action was policy-driven (not manual)
-
 ## 9) Demo Script (2–3 minutes)
 
 1) Sponsor creates a USDC campaign on Arc (show deposit tx).
@@ -229,4 +202,3 @@ Each stage emits trace logs and persists receipts for the public explorer.
    - close Yellow session (1 onchain settlement tx)
    - USDC payouts (onchain)
    - reputation attestation (onchain)
-5) (Optional) Agent “Reinvest” policy triggers a Uniswap v4 swap/LP action (show tx).

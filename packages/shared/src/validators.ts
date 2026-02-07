@@ -18,6 +18,7 @@ export const createCampaignSchema = z.object({
   endTime: z.string().datetime(),
   premium: z.boolean().default(false),
   yellowEnabled: z.boolean().default(false),
+  minProofsPerAgent: z.number().int().min(1).max(50).optional().default(1),
 });
 
 export const joinCampaignSchema = z.object({

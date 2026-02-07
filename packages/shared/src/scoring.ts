@@ -1,4 +1,4 @@
-import type { AgentScoreBreakdown, AgentScoreInput, WalletAddress } from "./types.js";
+import type { AgentScoreBreakdown, AgentScoreInput, InteractionActor, WalletAddress } from "./types.js";
 
 function clamp(value: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, value));
@@ -23,6 +23,30 @@ function normalizeAgainstMedian(value: number, med: number): number {
   return clamp((value / med) * 100);
 }
 
+function normalizeHandle(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function interactionSignal(actor: InteractionActor): number {
+  const c = actor.counts?.comments ?? 0;
+  const v = actor.counts?.votes ?? 0;
+  const r = actor.counts?.reposts ?? 0;
+  return 1.0 * c + 0.3 * v + 0.8 * r;
+}
+
+function computeEntropyNormalized(probs: number[]): number {
+  const n = probs.length;
+  if (n < 2) return 0;
+  let h = 0;
+  for (const p of probs) {
+    if (p <= 0) continue;
+    h += -p * Math.log(p);
+  }
+  const denom = Math.log(n);
+  if (denom <= 0) return 0;
+  return Math.max(0, Math.min(1, h / denom));
+}
+
 export type AdsWeights = {
   distribution: number;
   engagement: number;
@@ -42,6 +66,9 @@ export function computeAdsScores(
   budgetWei: bigint,
   priorAdsByAgent: Record<string, number>,
   weights: AdsWeights = ADS_V1_WEIGHTS,
+  opts?: {
+    priorAdsByHandle?: Record<string, number>;
+  },
 ): AgentScoreBreakdown[] {
   if (inputs.length === 0) {
     return [];
@@ -54,12 +81,68 @@ export function computeAdsScores(
   });
   const engagementMedian = Math.max(0.00001, median(engagementRates));
 
-  const networkRaw = inputs.map((row) => {
-    return row.interactingAgents.reduce((acc, wallet) => {
-      return acc + (priorAdsByAgent[wallet.toLowerCase()] ?? 0);
-    }, 0);
+  const priorAdsByHandle = opts?.priorAdsByHandle ?? {};
+
+  const networkStatsRaw = inputs.map((row) => {
+    // Prefer deterministic interaction ledger (handles + counts) if present.
+    const actors = Array.isArray(row.interactionActors) ? row.interactionActors : null;
+
+    if (actors && actors.length > 0) {
+      const signals: Array<{ handle: string; signal: number; reach?: number }> = [];
+      for (const actor of actors) {
+        const handle = normalizeHandle(actor.handle);
+        if (!handle) continue;
+        const signal = interactionSignal(actor);
+        if (signal <= 0) continue;
+        signals.push({ handle, signal, reach: actor.reach });
+      }
+
+      const totalSignal = signals.reduce((acc, item) => acc + item.signal, 0);
+      const probs = totalSignal > 0 ? signals.map((s) => s.signal / totalSignal) : [];
+      const topShare = probs.length ? Math.max(...probs) : 0;
+      const entropy = computeEntropyNormalized(probs);
+
+      let influenceRaw = 0;
+      for (const item of signals) {
+        const prior = priorAdsByHandle[normalizeHandle(item.handle)] ?? 0;
+        const reachQuality =
+          typeof item.reach === "number" && item.reach > 0 ? Math.log1p(item.reach) * 100 : 0;
+        const quality = Math.max(prior, reachQuality);
+        influenceRaw += quality * Math.sqrt(item.signal);
+      }
+
+      return {
+        uniqueActors: signals.length,
+        topShare,
+        entropy,
+        influenceRaw,
+      };
+    }
+
+    // Back-compat: treat interactingAgents as unique interactors, each with unit signal.
+    const unique = new Map<string, number>();
+    for (const wallet of row.interactingAgents ?? []) {
+      const w = wallet.toLowerCase();
+      unique.set(w, (unique.get(w) ?? 0) + 1);
+    }
+
+    const counts = [...unique.values()];
+    const total = counts.reduce((acc, c) => acc + c, 0);
+    const probs = total > 0 ? counts.map((c) => c / total) : [];
+    const topShare = probs.length ? Math.max(...probs) : 0;
+    const entropy = computeEntropyNormalized(probs);
+    const influenceRaw = [...unique.keys()].reduce((acc, w) => acc + (priorAdsByAgent[w] ?? 0), 0);
+
+    return {
+      uniqueActors: unique.size,
+      topShare,
+      entropy,
+      influenceRaw,
+    };
   });
-  const maxNetworkLog = Math.max(1, ...networkRaw.map((value) => Math.log1p(value)));
+
+  const uniqueMedian = Math.max(1, median(networkStatsRaw.map((row) => row.uniqueActors)));
+  const maxInfluenceLog = Math.max(1, ...networkStatsRaw.map((row) => Math.log1p(row.influenceRaw)));
 
   const raw = inputs.map((row, index) => {
     const distribution = normalizeAgainstMedian(row.impressions, impressionsMedian);
@@ -71,7 +154,11 @@ export function computeAdsScores(
       (row.validProofs / Math.max(1, row.expectedProofs)) * 100 - row.invalidProofs * 20;
     const reliability = clamp(reliabilityBase);
 
-    const network = clamp((Math.log1p(networkRaw[index]) / maxNetworkLog) * 100);
+    const ns = networkStatsRaw[index]!;
+    const breadth = normalizeAgainstMedian(ns.uniqueActors, uniqueMedian);
+    const influence = clamp((Math.log1p(ns.influenceRaw) / maxInfluenceLog) * 100);
+    const concentration = clamp((1 - ns.topShare) * 100);
+    const network = clamp(0.45 * breadth + 0.45 * influence + 0.1 * concentration);
 
     const adsScore =
       weights.distribution * distribution +
@@ -85,6 +172,10 @@ export function computeAdsScores(
       engagement,
       reliability,
       network,
+      networkUniqueActors: ns.uniqueActors,
+      networkTopShare: ns.topShare,
+      networkEntropy: ns.entropy,
+      networkInfluence: ns.influenceRaw,
       adsBasisPoints: Math.round(clamp(adsScore) * 100),
     };
   });

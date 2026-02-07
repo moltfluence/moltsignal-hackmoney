@@ -4,6 +4,7 @@ import type { Campaign, ProofSubmission, CampaignParticipant, Agent } from "@pri
 export function buildInputs(
   participants: Array<CampaignParticipant & { agent: Agent }>,
   proofs: ProofSubmission[],
+  minProofsPerAgent: number,
 ): AgentScoreInput[] {
   const byWallet = new Map<string, AgentScoreInput>();
 
@@ -15,9 +16,10 @@ export function buildInputs(
       comments: 0,
       reposts: 0,
       interactingAgents: [],
+      interactionActors: [],
       validProofs: 0,
       invalidProofs: 0,
-      expectedProofs: 1,
+      expectedProofs: Math.max(1, Number.isFinite(minProofsPerAgent) ? minProofsPerAgent : 1),
     });
   }
 
@@ -34,6 +36,14 @@ export function buildInputs(
       comments?: number;
       reposts?: number;
       interactingAgents?: string[];
+      interactions?: {
+        actors?: Array<{
+          handle: string;
+          reach?: number;
+          verified?: boolean;
+          counts: { comments: number; votes: number; reposts: number };
+        }>;
+      };
     };
 
     input.impressions += snapshot.impressions ?? 0;
@@ -47,6 +57,34 @@ export function buildInputs(
         ...snapshot.interactingAgents.map((wallet) => wallet.toLowerCase() as `0x${string}`),
       );
     }
+    if (Array.isArray(snapshot.interactions?.actors)) {
+      const merged = new Map<string, { handle: string; reach?: number; verified?: boolean; counts: { comments: number; votes: number; reposts: number } }>();
+      for (const actor of input.interactionActors ?? []) {
+        merged.set(actor.handle.toLowerCase(), {
+          handle: actor.handle,
+          reach: actor.reach,
+          verified: actor.verified,
+          counts: { ...actor.counts },
+        });
+      }
+      for (const actor of snapshot.interactions.actors) {
+        const key = actor.handle.trim().toLowerCase();
+        if (!key) continue;
+        const prev = merged.get(key);
+        const nextCounts = {
+          comments: (prev?.counts.comments ?? 0) + (actor.counts?.comments ?? 0),
+          votes: (prev?.counts.votes ?? 0) + (actor.counts?.votes ?? 0),
+          reposts: (prev?.counts.reposts ?? 0) + (actor.counts?.reposts ?? 0),
+        };
+        merged.set(key, {
+          handle: actor.handle,
+          reach: Math.max(prev?.reach ?? 0, actor.reach ?? 0) || prev?.reach || actor.reach,
+          verified: Boolean(prev?.verified || actor.verified),
+          counts: nextCounts,
+        });
+      }
+      input.interactionActors = [...merged.values()];
+    }
   }
 
   return [...byWallet.values()];
@@ -57,11 +95,16 @@ export function computeLeaderboard(
   participants: Array<CampaignParticipant & { agent: Agent }>,
   proofs: ProofSubmission[],
 ) {
-  const inputs = buildInputs(participants, proofs);
-  const priorAdsByAgent = Object.fromEntries(
+  const inputs = buildInputs(participants, proofs, (campaign as { minProofsPerAgent?: number }).minProofsPerAgent ?? 1);
+  const priorAdsByWallet = Object.fromEntries(
     participants.map((item) => [item.agent.wallet.toLowerCase(), item.agent.currentAds]),
   );
-  const scores = computeAdsScores(inputs, BigInt(campaign.budgetWei), priorAdsByAgent, ADS_V1_WEIGHTS);
+  const priorAdsByHandle = Object.fromEntries(
+    participants.map((item) => [item.agent.moltbookHandle.toLowerCase(), item.agent.currentAds]),
+  );
+  const scores = computeAdsScores(inputs, BigInt(campaign.budgetWei), priorAdsByWallet, ADS_V1_WEIGHTS, {
+    priorAdsByHandle,
+  });
 
   return scores.map((row) => ({
     wallet: row.wallet,
@@ -71,6 +114,10 @@ export function computeLeaderboard(
     engagement: row.engagement,
     reliability: row.reliability,
     network: row.network,
+    networkUniqueActors: row.networkUniqueActors,
+    networkTopShare: row.networkTopShare,
+    networkEntropy: row.networkEntropy,
+    networkInfluence: row.networkInfluence,
     proofHash:
       proofs.find(
         (proof) =>

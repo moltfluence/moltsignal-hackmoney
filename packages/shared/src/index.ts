@@ -2,6 +2,7 @@ export * from "./types.js";
 export * from "./validators.js";
 export * from "./proof.js";
 export * from "./moltbook.js";
+export * from "./moltbookApi.js";
 export * from "./scoring.js";
 export * from "./abi.js";
 export * from "./signatures.js";

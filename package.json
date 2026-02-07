@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "worker:settle": "pnpm --filter @molt/worker settle",
-    "demo:flow": "tsx scripts/demo-flow.ts"
+    "demo:flow": "tsx scripts/demo-flow.ts",
+    "scoring:selftest": "node scripts/scoring-selftest.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.2",
