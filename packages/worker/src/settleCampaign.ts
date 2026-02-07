@@ -12,6 +12,7 @@ import {
 import { createPublicClient, createWalletClient, defineChain, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createOrchestrationRunner } from "./agents/runner.js";
+import { getYellowSessionAgent, isYellowEnabled } from "./agents/YellowSessionAgent.js";
 import { prisma } from "./db.js";
 import { config } from "./config.js";
 
@@ -235,6 +236,38 @@ export async function settleCampaign(campaignId: number) {
     };
   });
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Yellow Network Session Settlement (if enabled)
+  // ─────────────────────────────────────────────────────────────────────────
+  let yellowSettlement: { closed: number; failed: number } | null = null;
+
+  if (campaign.yellowEnabled && isYellowEnabled()) {
+    yellowSettlement = await orchestrator.runStage("close-yellow-sessions", async () => {
+      console.log(`[settleCampaign] Closing Yellow sessions for campaign ${campaignId}`);
+
+      try {
+        const yellowAgent = getYellowSessionAgent();
+        const result = await yellowAgent.closeAllSessionsForCampaign(campaignId);
+
+        console.log(
+          `[settleCampaign] Yellow settlement complete: ${result.closed} closed, ${result.failed} failed`
+        );
+
+        return {
+          closed: result.closed,
+          failed: result.failed,
+        };
+      } catch (error) {
+        // Log but don't fail the entire settlement if Yellow fails
+        console.error(`[settleCampaign] Yellow session closure failed:`, error);
+        return {
+          closed: 0,
+          failed: -1, // Indicates complete failure
+        };
+      }
+    });
+  }
+
   const signedAttestation = await orchestrator.runStage("sign-attestation", async () => {
     const attestationRows = scoring.scores.map((row) => {
       const oldAds = scoring.priorAds[row.wallet.toLowerCase()] ?? 0;
@@ -355,6 +388,7 @@ export async function settleCampaign(campaignId: number) {
     settleTx: settled.settleTx,
     attestTx,
     scoreRunId: persisted,
+    yellowSettlement,
     traces: orchestrator.getTraces(),
   };
 }
