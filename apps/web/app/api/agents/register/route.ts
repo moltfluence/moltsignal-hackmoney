@@ -63,10 +63,12 @@ export async function POST(req: Request) {
       create: {
         wallet: payload.wallet,
         moltbookHandle: payload.moltbookHandle,
+        registrationSig: payload.signature,
         ...(nftTokenId != null ? { nftTokenId, agentUri } : {}),
       },
       update: {
         moltbookHandle: payload.moltbookHandle,
+        registrationSig: payload.signature,
         ...(nftTokenId != null ? { nftTokenId, agentUri } : {}),
       },
     });
