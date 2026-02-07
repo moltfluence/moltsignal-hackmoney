@@ -16,6 +16,7 @@ export default async function CampaignPage({ params }: Props) {
       yellowSessions: { include: { microRewards: true, agent: true } },
       scoreRuns: { include: { rows: true }, orderBy: { createdAt: "desc" }, take: 1 },
       settlements: { orderBy: { createdAt: "desc" }, take: 1 },
+      erc8004Feedback: { include: { agent: true }, orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -94,6 +95,7 @@ export default async function CampaignPage({ params }: Props) {
             {latest.rows.map((row) => (
               <li key={row.id}>
                 ADS {row.adsTotal} - payout {row.payoutWei} wei - proof <code>{row.proofHash}</code>
+                {" "} | network: {row.network.toFixed(1)} (unique {row.networkUniqueActors}, entropy {row.networkEntropy.toFixed(2)}, topShare {row.networkTopShare.toFixed(2)})
               </li>
             ))}
           </ul>
@@ -101,6 +103,21 @@ export default async function CampaignPage({ params }: Props) {
           <p>No score run yet.</p>
         )}
       </div>
+
+      {campaign.erc8004Feedback.length > 0 ? (
+        <div className="card">
+          <h2>ERC-8004 Reputation Feedback</h2>
+          <ul>
+            {campaign.erc8004Feedback.map((fb) => (
+              <li key={fb.id}>
+                {fb.agent.wallet} ({fb.agent.moltbookHandle}) — ADS {fb.value} bp
+                — NFT #{fb.nftTokenId.toString()}
+                — tx <code>{fb.txHash}</code>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="card">
         <h2>Settlement</h2>

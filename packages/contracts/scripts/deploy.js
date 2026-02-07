@@ -18,6 +18,20 @@ async function main() {
 
   console.log("escrow", await escrow.getAddress());
   console.log("attestor", await attestor.getAddress());
+
+  // ERC-8004 contracts
+  const AgentRegistry8004 = await ethers.getContractFactory("AgentRegistry8004");
+  const agentRegistry = await AgentRegistry8004.deploy(deployer.address);
+  await agentRegistry.waitForDeployment();
+
+  const agentRegistryAddress = await agentRegistry.getAddress();
+
+  const ReputationRegistry8004 = await ethers.getContractFactory("ReputationRegistry8004");
+  const reputationRegistry = await ReputationRegistry8004.deploy(agentRegistryAddress, deployer.address);
+  await reputationRegistry.waitForDeployment();
+
+  console.log("agentRegistry8004", agentRegistryAddress);
+  console.log("reputationRegistry8004", await reputationRegistry.getAddress());
 }
 
 main().catch((error) => {

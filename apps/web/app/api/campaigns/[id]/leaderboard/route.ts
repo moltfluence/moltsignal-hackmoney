@@ -25,6 +25,10 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
       campaignId,
       status: campaign.status,
       leaderboard,
+      network: {
+        description:
+          "ADS v1.1 network metrics: breadth (unique actors), influence (prior ADS / reach weighted), concentration (top share) and entropy (distribution).",
+      },
     });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 400 });

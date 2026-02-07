@@ -28,11 +28,13 @@ model Agent {
   moltbookHandle String
   createdAt      DateTime               @default(now())
   currentAds     Int                    @default(0)
+  nftTokenId     BigInt?
+  agentUri       String?
   participants   CampaignParticipant[]
   proofs         ProofSubmission[]
   scoreRows      ScoreRow[]
   yellowSessions YellowSession[]
-  treasuryActions TreasuryAction[]
+  erc8004Feedback Erc8004Feedback[]
 
   @@map("agents")
 }
@@ -45,6 +47,7 @@ model Campaign {
   budgetWei      String
   premium        Boolean                @default(false)
   yellowEnabled  Boolean                @default(false)
+  minProofsPerAgent Int                @default(1)
   endTime        DateTime
   status         CampaignStatus         @default(ACTIVE)
   createdAt      DateTime               @default(now())
@@ -55,7 +58,7 @@ model Campaign {
   scoreRows      ScoreRow[]
   settlements    Settlement[]
   yellowSessions YellowSession[]
-  treasuryActions TreasuryAction[]
+  erc8004Feedback Erc8004Feedback[]
 
   @@map("campaigns")
 }
@@ -111,6 +114,10 @@ model ScoreRow {
   engagement   Float
   reliability  Float
   network      Float
+  networkUniqueActors Int @default(0)
+  networkTopShare Float  @default(0)
+  networkEntropy Float   @default(0)
+  networkInfluence Float @default(0)
   adsTotal     Int
   payoutWei    String
   proofHash    String
@@ -169,18 +176,19 @@ model MicroReward {
   @@map("micro_rewards")
 }
 
-model TreasuryAction {
-  id         Int      @id @default(autoincrement())
-  campaignId Int
-  agentId    Int
-  actionType String
-  chainId    Int
-  txHash     String
-  detailsJson Json?
-  createdAt  DateTime @default(now())
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+model Erc8004Feedback {
+  id            Int      @id @default(autoincrement())
+  campaignId    Int
+  agentId       Int
+  nftTokenId    BigInt
+  value         Int
+  tag1          String   @default("moltsignal")
+  tag2          String   @default("ads-v1")
+  txHash        String
+  createdAt     DateTime @default(now())
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@index([campaignId])
-  @@map("treasury_actions")
+  @@map("erc8004_feedback")
 }

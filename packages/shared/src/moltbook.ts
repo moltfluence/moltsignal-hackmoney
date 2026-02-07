@@ -1,4 +1,5 @@
 import type { AgentMetricsSnapshot, WalletAddress } from "./types.js";
+import { fetchMoltbookInteractionsFromApi, type MoltbookApiConfig } from "./moltbookApi.js";
 
 const METRIC_PATTERNS = {
   impressions: /impressions?[^0-9]*([0-9,.kKmM]+)/i,
@@ -63,4 +64,96 @@ export async function fetchMoltbookSnapshot(
   };
 
   return snapshot;
+}
+
+function safeNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+function readFirstNumber(obj: any, keys: string[]): number | undefined {
+  for (const key of keys) {
+    const value = obj?.[key];
+    const n = safeNumber(value);
+    if (typeof n === "number") return n;
+  }
+  return undefined;
+}
+
+export async function fetchMoltbookSnapshotV2(
+  postUrl: string,
+  allowlist: string[],
+  api?: MoltbookApiConfig,
+): Promise<AgentMetricsSnapshot> {
+  // Always validate host.
+  const parsed = new URL(postUrl);
+  if (!isAllowedMoltbookHost(parsed, allowlist)) {
+    throw new Error(`Host ${parsed.hostname} is not in Moltbook allowlist`);
+  }
+
+  // Default metrics source is the resilient HTML parser.
+  let base = await fetchMoltbookSnapshot(postUrl, allowlist);
+
+  if (api?.apiKey) {
+    // Best-effort: fetch deterministic interaction ledger from the Moltbook API.
+    const actors = await fetchMoltbookInteractionsFromApi(postUrl, api).catch(() => []);
+
+    // Attempt to read more reliable counts from the post payload, if the API exposes them.
+    // We do not fail if this isn't available; HTML parser remains the fallback.
+    try {
+      const baseUrl = api.baseUrl ?? "https://www.moltbook.com/api/v1";
+      const idMatch = parsed.pathname.match(/\/posts\/([^\/?#]+)/i);
+      const postId = idMatch?.[1] ?? parsed.pathname.split("/").filter(Boolean).slice(-1)[0];
+      if (postId) {
+        const res = await fetch(`${baseUrl.replace(/\/$/, "")}/posts/${encodeURIComponent(postId)}`, {
+          method: "GET",
+          headers: {
+            authorization: `Bearer ${api.apiKey}`,
+            accept: "application/json",
+            "user-agent": "MoltSignal/0.1",
+          },
+        });
+        if (res.ok) {
+          const json: any = await res.json().catch(() => null);
+          const impressions = readFirstNumber(json, ["impressions", "views", "viewCount", "view_count"]);
+          const likes = readFirstNumber(json, ["likes", "likeCount", "like_count", "upvotes"]);
+          const comments = readFirstNumber(json, ["comments", "commentCount", "comment_count"]);
+          const reposts = readFirstNumber(json, ["reposts", "repostCount", "repost_count", "shares"]);
+          base = {
+            ...base,
+            impressions: impressions ?? base.impressions,
+            likes: likes ?? base.likes,
+            comments: comments ?? base.comments,
+            reposts: reposts ?? base.reposts,
+          };
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    const totalSignals = actors.reduce((acc, a) => {
+      const c = a.counts?.comments ?? 0;
+      const v = a.counts?.votes ?? 0;
+      const r = a.counts?.reposts ?? 0;
+      return acc + (1.0 * c + 0.3 * v + 0.8 * r);
+    }, 0);
+
+    base = {
+      ...base,
+      interactions: {
+        actors,
+        totals: {
+          uniqueActors: actors.filter((a) => (a.handle ?? "").trim().length > 0).length,
+          totalSignals,
+        },
+      },
+    };
+  }
+
+  return base;
 }

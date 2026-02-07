@@ -2,11 +2,11 @@ import {
   ADS_V1_WEIGHTS,
   campaignEscrowAbi,
   computeAdsScores,
-  fetchMoltbookSnapshot,
   hashAttestationRows,
   hashCanonicalJson,
   hashSettlementRows,
   reputationAttestorAbi,
+  reputationRegistry8004Abi,
   type AgentScoreInput,
 } from "@molt/shared";
 import { createPublicClient, createWalletClient, defineChain, http } from "viem";
@@ -22,6 +22,14 @@ type SnapshotRow = {
   comments: number;
   reposts: number;
   interactingAgents?: string[];
+  interactions?: {
+    actors?: Array<{
+      handle: string;
+      reach?: number;
+      verified?: boolean;
+      counts: { comments: number; votes: number; reposts: number };
+    }>;
+  };
 };
 
 function monadChain() {
@@ -34,17 +42,42 @@ function monadChain() {
   });
 }
 
-function toInput(wallet: `0x${string}`, snapshots: SnapshotRow[]): AgentScoreInput {
-  const validProofs = snapshots.length;
-  const aggregate = snapshots.reduce(
+function toInput(
+  wallet: `0x${string}`,
+  rows: Array<{ snapshot: SnapshotRow; valid: boolean }>,
+  expectedProofs: number,
+): AgentScoreInput {
+  const validProofs = rows.reduce((acc, r) => acc + (r.valid ? 1 : 0), 0);
+  const invalidProofs = rows.reduce((acc, r) => acc + (r.valid ? 0 : 1), 0);
+
+  const aggregate = rows.reduce(
     (acc, row) => {
-      acc.impressions += row.impressions;
-      acc.likes += row.likes;
-      acc.comments += row.comments;
-      acc.reposts += row.reposts;
-      if (Array.isArray(row.interactingAgents)) {
-        for (const agent of row.interactingAgents) {
+      const snap = row.snapshot;
+      acc.impressions += snap.impressions ?? 0;
+      acc.likes += snap.likes ?? 0;
+      acc.comments += snap.comments ?? 0;
+      acc.reposts += snap.reposts ?? 0;
+      if (Array.isArray(snap.interactingAgents)) {
+        for (const agent of snap.interactingAgents) {
           acc.interactingAgents.add(agent.toLowerCase() as `0x${string}`);
+        }
+      }
+      if (Array.isArray(snap.interactions?.actors)) {
+        for (const actor of snap.interactions.actors) {
+          const key = (actor.handle ?? "").trim().toLowerCase();
+          if (!key) continue;
+          const prev = acc.interactionActors.get(key);
+          const nextCounts = {
+            comments: (prev?.counts.comments ?? 0) + (actor.counts?.comments ?? 0),
+            votes: (prev?.counts.votes ?? 0) + (actor.counts?.votes ?? 0),
+            reposts: (prev?.counts.reposts ?? 0) + (actor.counts?.reposts ?? 0),
+          };
+          acc.interactionActors.set(key, {
+            handle: actor.handle,
+            reach: Math.max(prev?.reach ?? 0, actor.reach ?? 0) || prev?.reach || actor.reach,
+            verified: Boolean(prev?.verified || actor.verified),
+            counts: nextCounts,
+          });
         }
       }
       return acc;
@@ -55,6 +88,10 @@ function toInput(wallet: `0x${string}`, snapshots: SnapshotRow[]): AgentScoreInp
       comments: 0,
       reposts: 0,
       interactingAgents: new Set<`0x${string}`>(),
+      interactionActors: new Map<
+        string,
+        { handle: string; reach?: number; verified?: boolean; counts: { comments: number; votes: number; reposts: number } }
+      >(),
     },
   );
 
@@ -65,9 +102,10 @@ function toInput(wallet: `0x${string}`, snapshots: SnapshotRow[]): AgentScoreInp
     comments: aggregate.comments,
     reposts: aggregate.reposts,
     interactingAgents: [...aggregate.interactingAgents],
+    interactionActors: [...aggregate.interactionActors.values()],
     validProofs,
-    invalidProofs: 0,
-    expectedProofs: Math.max(1, validProofs),
+    invalidProofs,
+    expectedProofs: Math.max(1, expectedProofs),
   };
 }
 
@@ -98,50 +136,50 @@ export async function settleCampaign(campaignId: number) {
   }
 
   const grouped = await orchestrator.runStage("ingest-proofs", async () => {
-    const results = new Map<string, SnapshotRow[]>();
+    const results = new Map<string, Array<{ snapshot: SnapshotRow; valid: boolean }>>();
     for (const participant of campaign.participants) {
       results.set(participant.agent.wallet.toLowerCase(), []);
     }
 
     for (const proof of campaign.proofs) {
-      let snapshot = proof.fetchedSnapshotJson as SnapshotRow;
-      try {
-        snapshot = await fetchMoltbookSnapshot(proof.postUrl, config.allowlist);
-      } catch {
-        // Preserve the originally captured snapshot if live fetch fails.
-      }
+      const snapshot = proof.fetchedSnapshotJson as SnapshotRow;
 
       const wallet = agentWalletById.get(proof.agentId)?.toLowerCase();
       if (!wallet) {
         continue;
       }
-      results.get(wallet)?.push(snapshot);
+      results.get(wallet)?.push({ snapshot, valid: Boolean((proof as { valid?: boolean }).valid) });
     }
 
     return results;
   });
 
   const scoring = await orchestrator.runStage("compute-scores", async () => {
-    const priorAds: Record<string, number> = {};
+    const priorAdsByWallet: Record<string, number> = {};
+    const priorAdsByHandle: Record<string, number> = {};
     for (const participant of campaign.participants) {
-      priorAds[participant.agent.wallet.toLowerCase()] = participant.agent.currentAds;
+      priorAdsByWallet[participant.agent.wallet.toLowerCase()] = participant.agent.currentAds;
+      priorAdsByHandle[participant.agent.moltbookHandle.toLowerCase()] = participant.agent.currentAds;
     }
 
     const inputs: AgentScoreInput[] = [];
-    for (const [wallet, snapshots] of grouped.entries()) {
-      if (snapshots.length === 0) {
+    const expectedProofs = (campaign as { minProofsPerAgent?: number }).minProofsPerAgent ?? 1;
+    for (const [wallet, rows] of grouped.entries()) {
+      if (rows.length === 0) {
         continue;
       }
-      inputs.push(toInput(wallet as `0x${string}`, snapshots));
+      inputs.push(toInput(wallet as `0x${string}`, rows, expectedProofs));
     }
 
     const budgetWei = BigInt(campaign.budgetWei);
-    const scores = computeAdsScores(inputs, budgetWei, priorAds, ADS_V1_WEIGHTS);
+    const scores = computeAdsScores(inputs, budgetWei, priorAdsByWallet, ADS_V1_WEIGHTS, {
+      priorAdsByHandle,
+    });
     if (scores.length === 0) {
       throw new Error("cannot settle campaign without at least one valid score row");
     }
 
-    return { priorAds, scores };
+    return { priorAds: priorAdsByWallet, scores };
   });
 
   const sponsorAccount = privateKeyToAccount(config.sponsorPrivateKey);
@@ -328,6 +366,79 @@ export async function settleCampaign(campaignId: number) {
     return tx;
   });
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // ERC-8004 Reputation Feedback (if configured)
+  // ─────────────────────────────────────────────────────────────────────────
+  const zeroAddress = "0x0000000000000000000000000000000000000000";
+  let erc8004Feedback:
+    | {
+        submitted: number;
+        failed: number;
+        rows: Array<{
+          agentId: number;
+          nftTokenId: bigint;
+          value: number;
+          txHash: `0x${string}`;
+        }>;
+      }
+    | null = null;
+
+  if (config.reputationRegistryAddress !== zeroAddress) {
+    erc8004Feedback = await orchestrator.runStage("submit-erc8004-feedback", async () => {
+      let submitted = 0;
+      let failed = 0;
+      const rows: Array<{
+        agentId: number;
+        nftTokenId: bigint;
+        value: number;
+        txHash: `0x${string}`;
+      }> = [];
+
+      for (const row of scoring.scores) {
+        const agent = campaign.participants.find(
+          (p: { agent: { wallet: string } }) =>
+            p.agent.wallet.toLowerCase() === row.wallet.toLowerCase(),
+        )?.agent;
+        if (!agent?.nftTokenId) {
+          failed++;
+          continue;
+        }
+
+        try {
+          const tx = await oracleClient.writeContract({
+            address: config.reputationRegistryAddress,
+            abi: reputationRegistry8004Abi,
+            functionName: "giveFeedback",
+            args: [
+              BigInt(agent.nftTokenId),
+              BigInt(row.adsBasisPoints),
+              2, // valueDecimals (basis points)
+              "moltsignal",
+              "ads-v1",
+              "",
+              "",
+              signedSettlement.rowsHash,
+            ],
+            account: oracleAccount,
+          });
+          await publicClient.waitForTransactionReceipt({ hash: tx });
+          rows.push({
+            agentId: agent.id,
+            nftTokenId: BigInt(agent.nftTokenId),
+            value: row.adsBasisPoints,
+            txHash: tx,
+          });
+          submitted++;
+        } catch (err) {
+          console.error(`[settleCampaign] ERC-8004 feedback failed for agent ${agent.id}:`, err);
+          failed++;
+        }
+      }
+
+      return { submitted, failed, rows };
+    });
+  }
+
   const persisted = await orchestrator.runStage("persist-results", async () => {
     const run = await prisma.scoreRun.create({
       data: {
@@ -355,6 +466,10 @@ export async function settleCampaign(campaignId: number) {
           engagement: row.engagement,
           reliability: row.reliability,
           network: row.network,
+          networkUniqueActors: row.networkUniqueActors,
+          networkTopShare: row.networkTopShare,
+          networkEntropy: row.networkEntropy,
+          networkInfluence: row.networkInfluence,
           adsTotal: row.adsBasisPoints,
           payoutWei: row.payoutWei.toString(),
           proofHash:
@@ -381,6 +496,21 @@ export async function settleCampaign(campaignId: number) {
 
     await prisma.campaign.update({ where: { id: campaignId }, data: { status: "SETTLED" } });
 
+    // Persist ERC-8004 feedback records
+    if (erc8004Feedback?.rows?.length) {
+      for (const feedbackRow of erc8004Feedback.rows) {
+        await prisma.erc8004Feedback.create({
+          data: {
+            campaignId,
+            agentId: feedbackRow.agentId,
+            nftTokenId: feedbackRow.nftTokenId,
+            value: feedbackRow.value,
+            txHash: feedbackRow.txHash,
+          },
+        });
+      }
+    }
+
     return run.id;
   });
 
@@ -389,6 +519,7 @@ export async function settleCampaign(campaignId: number) {
     attestTx,
     scoreRunId: persisted,
     yellowSettlement,
+    erc8004Feedback,
     traces: orchestrator.getTraces(),
   };
 }

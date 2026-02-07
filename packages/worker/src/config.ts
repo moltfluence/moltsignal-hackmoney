@@ -75,6 +75,8 @@ export const config = {
   rpcUrl: required("ARC_RPC_URL"),
   escrowAddress: required("ESCROW_ADDRESS") as `0x${string}`,
   attestorAddress: required("ATTESTOR_ADDRESS") as `0x${string}`,
+  agentRegistryAddress: (process.env.AGENT_REGISTRY_8004_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+  reputationRegistryAddress: (process.env.REPUTATION_REGISTRY_8004_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
   sponsorPrivateKey: required("SPONSOR_PRIVATE_KEY") as `0x${string}`,
   oraclePrivateKey: required("ORACLE_PRIVATE_KEY") as `0x${string}`,
   allowlist: (process.env.MOLTBOOK_ALLOWLIST ?? "moltbook.com,www.moltbook.com")
@@ -91,16 +93,5 @@ export const config = {
     assetSymbol: process.env.YELLOW_ASSET_SYMBOL ?? "ytest.usd",
     senderPrivateKey: (process.env.YELLOW_SENDER_PRIVATE_KEY ?? "") as `0x${string}`,
     payPerValidProofAtomic: BigInt(process.env.YELLOW_PAY_PER_VALID_PROOF_ATOMIC ?? "0"),
-  },
-  uniswapV4: {
-    enabled: (process.env.UNISWAP_V4_ENABLED ?? "false").toLowerCase() === "true",
-    chainId: Number(process.env.UNISWAP_V4_CHAIN_ID ?? 11155111),
-    rpcUrl: process.env.UNISWAP_V4_RPC_URL ?? "",
-    universalRouterAddress: (process.env.UNISWAP_V4_UNIVERSAL_ROUTER_ADDRESS ?? "") as `0x${string}`,
-    poolManagerAddress: (process.env.UNISWAP_V4_POOL_MANAGER_ADDRESS ?? "") as `0x${string}`,
-    quoterAddress: (process.env.UNISWAP_V4_QUOTER_ADDRESS ?? "") as `0x${string}`,
-    positionManagerAddress: (process.env.UNISWAP_V4_POSITION_MANAGER_ADDRESS ?? "") as `0x${string}`,
-    permit2Address: (process.env.UNISWAP_V4_PERMIT2_ADDRESS ??
-      "0x000000000022D473030F116dDEE9F6B43aC78BA3") as `0x${string}`,
   },
 };
