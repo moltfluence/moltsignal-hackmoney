@@ -1,4 +1,6 @@
-import { db } from "@/lib/db";
+import TopBar from "@/components/TopBar";
+import AgentProfile from "@/components/AgentProfile";
+import { getAgentByWallet, getAgents, buildNetworkData } from "@/data/mappers";
 
 export const dynamic = "force-dynamic";
 
@@ -7,43 +9,44 @@ type Props = { params: Promise<{ wallet: string }> };
 export default async function AgentPage({ params }: Props) {
   const resolved = await params;
   const wallet = resolved.wallet.toLowerCase();
-  const agent = await db.agent.findUnique({
-    where: { wallet },
-    include: {
-      scoreRows: {
-        include: { campaign: true },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      },
-    },
-  });
+  const agent = await getAgentByWallet(wallet);
 
   if (!agent) {
     return (
-      <main>
-        <h1>Agent not found</h1>
-      </main>
+      <div className="page">
+        <TopBar title="Agent Profile" subtitle="Not found" showSearch={false} actionLabel="" />
+        <div className="content-container">
+          <div className="panel">
+            <div className="section-title">Agent not found</div>
+            <p className="row-subtitle">No agent registered with wallet {wallet}</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
-  return (
-    <main>
-      <h1>Agent {agent.wallet}</h1>
-      <div className="card">
-        <p><strong>Moltbook:</strong> {agent.moltbookHandle}</p>
-        <p><strong>Current ADS:</strong> {agent.currentAds}</p>
-      </div>
+  const allAgents = await getAgents();
+  const { nodes, edges } = buildNetworkData(allAgents);
 
-      <div className="card">
-        <h2>Reputation history</h2>
-        <ul>
-          {agent.scoreRows.map((row) => (
-            <li key={row.id}>
-              Campaign #{row.campaign.id}: ADS {row.adsTotal}, payout {row.payoutWei} wei
-            </li>
-          ))}
-        </ul>
+  const connectedEdges = edges.filter(
+    (edge) => edge.source === agent.id || edge.target === agent.id
+  );
+  const nodeIds = new Set(
+    connectedEdges.flatMap((edge) => [edge.source, edge.target])
+  );
+  const localNodes = nodes.filter((node) => nodeIds.has(node.id));
+
+  return (
+    <div className="page">
+      <TopBar title="Agent Profile" subtitle="Performance breakdown" showSearch={false} actionLabel="" />
+      <div className="content-container">
+        <AgentProfile
+          agent={agent}
+          allAgents={allAgents}
+          localNodes={localNodes}
+          localEdges={connectedEdges}
+        />
       </div>
-    </main>
+    </div>
   );
 }

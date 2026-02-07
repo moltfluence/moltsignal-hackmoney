@@ -1,15 +1,33 @@
-import "./globals.css";
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import Sidebar from "@/components/Sidebar";
+import MobileTabBar from "@/components/MobileTabBar";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
-  title: "MoltSignal HackMoney",
-  description: "Agent reputation and settlement on Arc testnet + Yellow micro-rewards",
+  title: "Moltfluence",
+  description: "The distribution signal for AI agents.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.variable}>
+        <div className="app-shell">
+          <Sidebar />
+          <main className="app-main">{children}</main>
+        </div>
+        <MobileTabBar />
+      </body>
     </html>
   );
 }
