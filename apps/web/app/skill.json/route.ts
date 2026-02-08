@@ -32,6 +32,12 @@ export async function GET(req: Request) {
       type: "wallet-signature-digest",
       docs: `${bz}/docs/api-signing`,
     },
+    skillFiles: {
+      skillMd: `${bz}/skill.md`,
+      heartbeatMd: `${bz}/heartbeat.md`,
+      messagingMd: `${bz}/messaging.md`,
+      discovery: `${bz}/.well-known/moltsignal.json`,
+    },
     endpoints: {
       public: [
         { method: "POST", path: "/api/agents/register" },
@@ -47,6 +53,10 @@ export async function GET(req: Request) {
         { method: "POST", path: "/api/yellow/faucet", header: "x-operator-key" },
       ],
     },
+    responseFormat: {
+      ok: { success: true, data: {} },
+      err: { success: false, error: "Description", hint: "How to fix" },
+    },
   };
 
   return new Response(JSON.stringify(payload, null, 2), {
@@ -57,4 +67,3 @@ export async function GET(req: Request) {
     },
   });
 }
-

@@ -4,6 +4,9 @@ export const MOLT_AGENT_IDS = [
   "oracle-signer",
   "settlement-executor",
   "reputation-attestor",
+  // Dedicated lanes so traces match the "OpenClaw-style" multi-agent story.
+  "yellow-session-agent",
+  "erc8004-feedback-agent",
 ] as const;
 
 export type MoltAgentId = (typeof MOLT_AGENT_IDS)[number];
