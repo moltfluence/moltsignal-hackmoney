@@ -1,14 +1,21 @@
 import { registerAgentSchema, agentRegistry8004Abi } from "@molt/shared";
-import { NextResponse } from "next/server";
 import { decodeEventLog } from "viem";
 import { db } from "@/lib/db";
 import { registerDigest } from "@molt/shared";
 import { getChainId } from "@/lib/env";
 import { verifyRawDigestSignature } from "@/lib/signature";
 import { clients } from "@/lib/chain";
+import { jsonErr, jsonOk, requestIp } from "@/lib/http";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   try {
+    const ip = requestIp(req);
+    const rl = rateLimit(`register:${ip}`, { limit: 30, windowMs: 60_000 });
+    if (!rl.ok) {
+      return jsonErr("rate limited", { status: 429, retryAfterSeconds: rl.retryAfterSeconds });
+    }
+
     const payload = registerAgentSchema.parse(await req.json());
     const wallet = payload.wallet as `0x${string}`;
 
@@ -20,7 +27,7 @@ export async function POST(req: Request) {
       payload.signature as `0x${string}`,
     );
     if (!ok) {
-      return NextResponse.json({ error: "invalid signature" }, { status: 401 });
+      return jsonErr("invalid signature", { status: 401, hint: "Sign REGISTER_AGENT digest as an EIP-191 raw message." });
     }
 
     // Attempt ERC-8004 on-chain registration (non-blocking — off-chain upsert still succeeds)
@@ -73,8 +80,15 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ agent });
+    // Do not return raw Prisma model (may contain BigInt fields).
+    return jsonOk({
+      wallet: agent.wallet,
+      moltbookHandle: agent.moltbookHandle,
+      createdAt: agent.createdAt,
+      circle: null,
+      erc8004: nftTokenId != null ? { nftTokenId: nftTokenId.toString(), agentUri } : null,
+    });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    return jsonErr((error as Error).message, { status: 400 });
   }
 }

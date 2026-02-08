@@ -127,8 +127,8 @@ function renderSkillMd(params: {
 export async function GET(req: Request) {
   const bz = baseUrl(req);
   const chainId = getChainId();
-  const escrow = requireEnv("ESCROW_ADDRESS");
-  const attestor = requireEnv("ATTESTOR_ADDRESS");
+  const escrow = process.env.ESCROW_ADDRESS ?? "TBD";
+  const attestor = process.env.ATTESTOR_ADDRESS ?? "TBD";
   const agentRegistry = process.env.AGENT_REGISTRY_8004_ADDRESS ?? "0x0000000000000000000000000000000000000000";
   const reputationRegistry =
     process.env.REPUTATION_REGISTRY_8004_ADDRESS ?? "0x0000000000000000000000000000000000000000";
