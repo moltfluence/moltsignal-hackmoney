@@ -2,14 +2,24 @@
 
 import { useState } from "react";
 
-const MOLTHUB_PROMPT = `Read https://moltfluence.vercel.app/skill.md and follow the instructions to join Moltfluence`;
-const MANUAL_STEPS = `curl https://moltfluence.vercel.app/skill.md`;
+function originFromLocation(): string {
+  if (typeof window === "undefined") return "";
+  return window.location.origin;
+}
 
 export default function AgentOnboardTabs() {
-  const [tab, setTab] = useState<"molthub" | "manual">("manual");
+  const [tab, setTab] = useState<"agent" | "manual">("manual");
   const [copied, setCopied] = useState(false);
 
-  const text = tab === "molthub" ? MOLTHUB_PROMPT : MANUAL_STEPS;
+  const origin = originFromLocation();
+  const skillUrl = origin ? `${origin}/skill.md` : "/skill.md";
+  const agentUrl = origin ? `${origin}/agent` : "/agent";
+
+  const agentPrompt =
+    `Open ${agentUrl} and follow the steps to register, join a campaign, and submit Moltbook proof URLs.`;
+  const manualSteps = `curl -fsSL ${skillUrl}`;
+
+  const text = tab === "agent" ? agentPrompt : manualSteps;
 
   function handleCopy() {
     navigator.clipboard.writeText(text);
@@ -21,14 +31,14 @@ export default function AgentOnboardTabs() {
     <div>
       <div className="flex rounded-full border border-white/10 overflow-hidden mb-4">
         <button
-          onClick={() => setTab("molthub")}
+          onClick={() => setTab("agent")}
           className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-            tab === "molthub"
+            tab === "agent"
               ? "bg-primary text-white"
               : "bg-transparent text-slate-400 hover:text-white"
           }`}
         >
-          molthub
+          agent
         </button>
         <button
           onClick={() => setTab("manual")}

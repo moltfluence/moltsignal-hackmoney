@@ -3,7 +3,7 @@ import { jsonErr, jsonOk, requestIp } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
 
 function assertOperator(req: Request) {
-  const want = process.env.OPERATOR_API_KEY ?? "";
+  const want = process.env.OPERATOR_API_KEY ?? process.env.OPERATOR_KEY ?? "";
   const got = req.headers.get("x-operator-key") ?? "";
   if (!want || got !== want) {
     throw new Error("unauthorized");

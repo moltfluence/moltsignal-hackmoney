@@ -18,7 +18,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     }
 
     const key = req.headers.get("x-operator-key");
-    if (!key || key !== process.env.OPERATOR_API_KEY) {
+    const want = process.env.OPERATOR_API_KEY ?? process.env.OPERATOR_KEY ?? "";
+    if (!key || !want || key !== want) {
       return jsonErr("unauthorized", { status: 401 });
     }
 

@@ -20,14 +20,21 @@ export async function POST(req: Request) {
     const wallet = payload.wallet as `0x${string}`;
 
     // Registration signs a deterministic digest tied to wallet + handle.
-    const digest = registerDigest(getChainId(), wallet, payload.moltbookHandle);
+    const chainId = getChainId();
+    const digest = registerDigest(chainId, wallet, payload.moltbookHandle);
     const ok = await verifyRawDigestSignature(
       wallet,
       digest,
       payload.signature as `0x${string}`,
     );
     if (!ok) {
-      return jsonErr("invalid signature", { status: 401, hint: "Sign REGISTER_AGENT digest as an EIP-191 raw message." });
+      return jsonErr("invalid signature", {
+        status: 401,
+        hint:
+          `Sign REGISTER_AGENT as an EIP-191 raw message. ` +
+          `Expected: chainId=${chainId}, wallet=${payload.wallet}, handle=${payload.moltbookHandle}. ` +
+          `You can fetch the exact digest at /api/digests/register?wallet=${payload.wallet}&handle=${encodeURIComponent(payload.moltbookHandle)}`,
+      });
     }
 
     // Attempt ERC-8004 on-chain registration (non-blocking — off-chain upsert still succeeds)

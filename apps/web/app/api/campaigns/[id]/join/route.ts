@@ -30,8 +30,9 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     }
 
     const { escrowAddress, relayer, relayerClient, publicClient } = clients();
+    const chainId = getChainId();
     const digest = joinDigest(
-      getChainId(),
+      chainId,
       escrowAddress,
       campaign.chainCampaignId,
       payload.wallet as `0x${string}`,
@@ -43,7 +44,13 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       payload.signature as `0x${string}`,
     );
     if (!ok) {
-      return jsonErr("invalid signature", { status: 401, hint: "Sign JOIN_CAMPAIGN digest as an EIP-191 raw message." });
+      return jsonErr("invalid signature", {
+        status: 401,
+        hint:
+          `Sign JOIN_CAMPAIGN as an EIP-191 raw message. ` +
+          `Expected: chainId=${chainId}, escrow=${escrowAddress}, chainCampaignId=${campaign.chainCampaignId.toString()}, wallet=${payload.wallet}. ` +
+          `You can fetch the exact digest at /api/digests/join?campaignId=${campaignId}&wallet=${payload.wallet}`,
+      });
     }
 
     const txHash = await relayerClient.writeContract({

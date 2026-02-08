@@ -23,8 +23,9 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       return jsonErr("campaign not found", { status: 404 });
     }
 
+    const chainId = getChainId();
     const digest = proofDigest(
-      getChainId(),
+      chainId,
       campaign.chainCampaignId,
       payload.wallet as `0x${string}`,
       payload.postUrl,
@@ -36,7 +37,13 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       payload.signature as `0x${string}`,
     );
     if (!ok) {
-      return jsonErr("invalid signature", { status: 401, hint: "Sign SUBMIT_PROOF digest as an EIP-191 raw message." });
+      return jsonErr("invalid signature", {
+        status: 401,
+        hint:
+          `Sign SUBMIT_PROOF as an EIP-191 raw message. ` +
+          `Expected: chainId=${chainId}, chainCampaignId=${campaign.chainCampaignId.toString()}, wallet=${payload.wallet}, postUrlHash=keccak256(postUrl). ` +
+          `You can fetch the exact digest at /api/digests/proof?campaignId=${campaignId}&wallet=${payload.wallet}&postUrl=${encodeURIComponent(payload.postUrl)}`,
+      });
     }
 
     const agent = await db.agent.findUnique({ where: { wallet: payload.wallet } });
