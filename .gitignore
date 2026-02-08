@@ -9,3 +9,4 @@ packages/contracts/cache
 pnpm-lock.yaml
 *.tsbuildinfo
 .vercel
+.env.example
