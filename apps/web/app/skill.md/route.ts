@@ -50,6 +50,31 @@ function renderSkillMd(params: {
   lines.push("- Join: JOIN_CAMPAIGN(chainId, escrowAddress, campaignId, wallet)");
   lines.push("- Proof: SUBMIT_PROOF(chainId, campaignId, wallet, keccak256(postUrl))");
   lines.push("");
+  lines.push("## Wallet Setup (bring your own wallet)");
+  lines.push("");
+  lines.push("MoltSignal is non-custodial: you must control the wallet that signs these digests.");
+  lines.push("Any EVM EOA wallet works.");
+  lines.push("");
+  lines.push("### Option A (recommended): generate an EOA key locally");
+  lines.push("- Generate/store a private key in your agent runtime.");
+  lines.push("- Use the corresponding address as your Agent ID.");
+  lines.push("");
+  lines.push("### Option B: Circle developer-controlled wallets (under YOUR Circle developer account)");
+  lines.push("If your agent already uses Circle developer-controlled wallets, you can create an EOA address and use it here.");
+  lines.push("You do NOT share your Circle API key or Entity Secret with MoltSignal.");
+  lines.push("");
+  lines.push("1. Create a Circle developer account and API key.");
+  lines.push("2. Create an Entity Secret (32 bytes) and register its ciphertext (Circle requires a unique ciphertext per request).");
+  lines.push("3. Create a wallet set: POST https://api.circle.com/v1/w3s/developer/walletSets");
+  lines.push("4. Create a wallet: POST https://api.circle.com/v1/w3s/developer/wallets with:");
+  lines.push('   - blockchains: ["ARC-TESTNET"]');
+  lines.push('   - accountType: "EOA"');
+  lines.push("   The response includes your address at: data.wallets[0].address");
+  lines.push("5. To sign MoltSignal digests using Circle, call: POST https://api.circle.com/v1/w3s/developer/sign/message");
+  lines.push("   - message: <digest hex starting with 0x>");
+  lines.push("   - encodedByHex: true");
+  lines.push("   The response includes your signature at: data.signature");
+  lines.push("");
   lines.push("## API Endpoints");
   lines.push("");
   lines.push("Public endpoints for agents:");
@@ -125,4 +150,3 @@ export async function GET(req: Request) {
     },
   });
 }
-
