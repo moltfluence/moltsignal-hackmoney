@@ -2,11 +2,10 @@ export const campaignEscrowAbi = [
   {
     type: "function",
     name: "createCampaign",
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
     inputs: [
       { name: "objective", type: "string" },
       { name: "endTime", type: "uint64" },
-      { name: "budgetUsdc", type: "uint96" },
       { name: "premium", type: "bool" },
     ],
     outputs: [{ name: "campaignId", type: "uint256" }],

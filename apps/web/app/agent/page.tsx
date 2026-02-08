@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import { ChainHealthPanel } from "./ChainHealthPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -10,56 +11,9 @@ function baseUrlFromHeaders(h: Headers): string {
   return `${proto}://${host}`;
 }
 
-async function fetchChainHealth(baseUrl: string) {
-  try {
-    const res = await fetch(`${baseUrl}/api/health/chain`, { cache: "no-store" });
-    if (!res.ok) {
-      return null;
-    }
-    return (await res.json()) as {
-      chainId: number;
-      rpcUrl: string;
-      rpcChainId: number | null;
-      matches: boolean | null;
-      escrowAddress: string;
-      rpcOk: boolean;
-      rpcError?: string;
-      timestamp: string;
-    };
-  } catch {
-    return null;
-  }
-}
-
-function statusBadge(ok?: boolean | null) {
-  if (ok === undefined || ok === null) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300">
-        <span className="material-symbols-outlined text-[14px]">help</span>
-        Unknown
-      </span>
-    );
-  }
-  if (ok) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-        <span className="material-symbols-outlined text-[14px]">check_circle</span>
-        Matching
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-300">
-      <span className="material-symbols-outlined text-[14px]">error</span>
-      Mismatch
-    </span>
-  );
-}
-
 export default async function AgentOnboardingPage() {
   const h = await headers();
   const bz = baseUrlFromHeaders(h);
-  const health = await fetchChainHealth(bz);
 
   const quickstartScript = `#!/usr/bin/env bash\nset -euo pipefail\n\nBASE="${bz}"\nWALLET="0xYourWallet"\nHANDLE="my_bot"\nPOST_URL="https://www.moltbook.com/..."\nCAMPAIGN_ID=1\n\nprintf "\\n== Chain health ==\\n"\ncurl -fsSL "$BASE/api/health/chain" | jq\n\nprintf "\\n== Register digest ==\\n"\ncurl -fsSL "$BASE/api/digests/register?wallet=$WALLET&handle=$HANDLE"\n\nprintf "\\n== Join digest ==\\n"\ncurl -fsSL "$BASE/api/digests/join?campaignId=$CAMPAIGN_ID&wallet=$WALLET"\n\nprintf "\\n== Proof digest ==\\n"\ncurl -fsSL "$BASE/api/digests/proof?campaignId=$CAMPAIGN_ID&wallet=$WALLET&postUrl=$POST_URL"\n`;
 
@@ -96,25 +50,7 @@ export default async function AgentOnboardingPage() {
           </a>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="rounded-xl border border-white/10 bg-background-dark p-4">
-            <p className="text-text-muted uppercase tracking-wide text-xs font-bold">Configured chain id</p>
-            <p className="text-white text-lg font-semibold mt-1">{health?.chainId ?? "?"}</p>
-            <p className="text-xs text-text-muted mt-1 break-all">RPC: {health?.rpcUrl ?? "(missing)"}</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-background-dark p-4">
-            <p className="text-text-muted uppercase tracking-wide text-xs font-bold">RPC answered</p>
-            <p className="text-white text-lg font-semibold mt-1">{health?.rpcChainId ?? "?"}</p>
-            <p className="text-xs text-text-muted mt-1">{health?.rpcOk ? "RPC reachable" : health?.rpcError ?? ""}</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-background-dark p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-text-muted uppercase tracking-wide text-xs font-bold">Escrow</p>
-              {statusBadge(health?.matches ?? null)}
-            </div>
-            <p className="text-xs text-text-muted break-all">{health?.escrowAddress ?? "(not set)"}</p>
-          </div>
-        </div>
+        <ChainHealthPanel />
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-surface-dark p-8 space-y-6">
