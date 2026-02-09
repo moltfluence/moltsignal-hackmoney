@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { computeLeaderboard } from "@/lib/scoring";
+import { jsonErr, jsonOk } from "@/lib/http";
 
 export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -16,12 +16,12 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
     });
 
     if (!campaign) {
-      return NextResponse.json({ error: "campaign not found" }, { status: 404 });
+      return jsonErr("campaign not found", { status: 404 });
     }
 
     const leaderboard = computeLeaderboard(campaign, campaign.participants, campaign.proofs);
 
-    return NextResponse.json({
+    return jsonOk({
       campaignId,
       status: campaign.status,
       leaderboard,
@@ -31,6 +31,6 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
       },
     });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    return jsonErr((error as Error).message, { status: 400 });
   }
 }

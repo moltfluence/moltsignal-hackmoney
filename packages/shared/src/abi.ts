@@ -32,7 +32,7 @@ export const campaignEscrowAbi = [
         type: "tuple[]",
         components: [
           { name: "agent", type: "address" },
-          { name: "payoutWei", type: "uint96" },
+          { name: "payoutUsdc", type: "uint96" },
           { name: "adsScore", type: "uint32" },
           { name: "proofHash", type: "bytes32" },
         ],
@@ -43,16 +43,36 @@ export const campaignEscrowAbi = [
   },
   {
     type: "function",
+    name: "getCampaign",
+    stateMutability: "view",
+    inputs: [{ name: "campaignId", type: "uint256" }],
+    outputs: [
+      { name: "sponsor", type: "address" },
+      { name: "budgetUsdc", type: "uint96" },
+      { name: "endTime", type: "uint64" },
+      { name: "settled", type: "bool" },
+      { name: "nonce", type: "uint64" },
+    ],
+  },
+  {
+    type: "function",
     name: "campaigns",
     stateMutability: "view",
     inputs: [{ name: "campaignId", type: "uint256" }],
     outputs: [
       { name: "sponsor", type: "address" },
-      { name: "budgetWei", type: "uint96" },
+      { name: "budgetUsdc", type: "uint96" },
       { name: "endTime", type: "uint64" },
       { name: "settled", type: "bool" },
       { name: "nonce", type: "uint64" },
     ],
+  },
+  {
+    type: "function",
+    name: "usdc",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
   },
   {
     type: "event",
@@ -60,9 +80,19 @@ export const campaignEscrowAbi = [
     inputs: [
       { indexed: true, name: "campaignId", type: "uint256" },
       { indexed: true, name: "sponsor", type: "address" },
-      { indexed: false, name: "budgetWei", type: "uint96" },
+      { indexed: false, name: "budgetUsdc", type: "uint96" },
       { indexed: false, name: "endTime", type: "uint64" },
       { indexed: false, name: "objective", type: "string" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "CampaignSettled",
+    inputs: [
+      { indexed: true, name: "campaignId", type: "uint256" },
+      { indexed: false, name: "settlementDigest", type: "bytes32" },
+      { indexed: false, name: "totalPayout", type: "uint256" },
     ],
     anonymous: false,
   },

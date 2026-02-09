@@ -221,7 +221,7 @@ export async function settleCampaign(campaignId: number) {
 
       return {
         agent: row.wallet,
-        payoutWei: row.payoutWei,
+        payoutUsdc: row.payoutWei,
         adsScore: row.adsBasisPoints,
         proofHash: proofHashes[0] ?? hashCanonicalJson({ empty: true, wallet: row.wallet }),
       };

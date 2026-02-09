@@ -1,30 +1,38 @@
 import { joinCampaignSchema, joinDigest } from "@molt/shared";
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { clients } from "@/lib/chain";
 import { verifyRawDigestSignature } from "@/lib/signature";
 import { getChainId } from "@/lib/env";
 import { campaignEscrowAbi } from "@molt/shared";
+import { jsonErr, jsonOk, requestIp } from "@/lib/http";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const ip = requestIp(req);
+    const rl = rateLimit(`join:${ip}`, { limit: 120, windowMs: 60_000 });
+    if (!rl.ok) {
+      return jsonErr("rate limited", { status: 429, retryAfterSeconds: rl.retryAfterSeconds });
+    }
+
     const payload = joinCampaignSchema.parse(await req.json());
     const params = await context.params;
     const campaignId = Number(params.id);
 
     const campaign = await db.campaign.findUnique({ where: { id: campaignId } });
     if (!campaign) {
-      return NextResponse.json({ error: "campaign not found" }, { status: 404 });
+      return jsonErr("campaign not found", { status: 404 });
     }
 
     const agent = await db.agent.findUnique({ where: { wallet: payload.wallet } });
     if (!agent) {
-      return NextResponse.json({ error: "agent not registered" }, { status: 404 });
+      return jsonErr("agent not registered", { status: 404, hint: "Call POST /api/agents/register first." });
     }
 
     const { escrowAddress, relayer, relayerClient, publicClient } = clients();
+    const chainId = getChainId();
     const digest = joinDigest(
-      getChainId(),
+      chainId,
       escrowAddress,
       campaign.chainCampaignId,
       payload.wallet as `0x${string}`,
@@ -36,7 +44,13 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       payload.signature as `0x${string}`,
     );
     if (!ok) {
-      return NextResponse.json({ error: "invalid signature" }, { status: 401 });
+      return jsonErr("invalid signature", {
+        status: 401,
+        hint:
+          `Sign JOIN_CAMPAIGN as an EIP-191 raw message. ` +
+          `Expected: chainId=${chainId}, escrow=${escrowAddress}, chainCampaignId=${campaign.chainCampaignId.toString()}, wallet=${payload.wallet}. ` +
+          `You can fetch the exact digest at /api/digests/join?campaignId=${campaignId}&wallet=${payload.wallet}`,
+      });
     }
 
     const txHash = await relayerClient.writeContract({
@@ -62,8 +76,16 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       update: {},
     });
 
-    return NextResponse.json({ participant, txHash });
+    return jsonOk({
+      participant: {
+        id: participant.id,
+        campaignId: participant.campaignId,
+        agentWallet: agent.wallet,
+        joinedAt: participant.joinedAt,
+      },
+      txHash,
+    });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    return jsonErr((error as Error).message, { status: 400 });
   }
 }

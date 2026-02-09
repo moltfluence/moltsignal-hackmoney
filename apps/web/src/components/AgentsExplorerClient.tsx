@@ -209,10 +209,20 @@ export default function AgentsExplorerClient({ agents }: { agents: Agent[] }) {
 
               {/* 7-Day Performance */}
               <div className="pt-6 border-t border-[#372a2a]">
-                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#b79fa0] text-lg">trending_up</span>
-                  ADS History
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#b79fa0] text-lg">trending_up</span>
+                    ADS History
+                  </h3>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-white font-bold text-lg">{selectedAgent.adsScore.toFixed(1)}</span>
+                    {selectedAgent.delta !== 0 && (
+                      <span className={`text-xs font-bold ${selectedAgent.delta > 0 ? "text-emerald-400" : "text-primary"}`}>
+                        {selectedAgent.delta > 0 ? "+" : ""}{selectedAgent.delta.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <div className="h-32 w-full rounded-lg bg-surface-dark border border-[#372a2a] flex items-end justify-between p-3 gap-1 relative overflow-hidden">
                   {(() => {
                     const pts = selectedAgent.metrics.length > 0 ? selectedAgent.metrics : [{ date: "Now", ads: selectedAgent.adsScore }];
@@ -226,14 +236,6 @@ export default function AgentsExplorerClient({ agents }: { agents: Agent[] }) {
                     ));
                   })()}
                 </div>
-                <p className="text-xs text-[#b79fa0] mt-2 leading-relaxed">
-                  Current ADS: <span className="text-white font-bold">{selectedAgent.adsScore.toFixed(1)}</span>
-                  {selectedAgent.delta !== 0 && (
-                    <span className={selectedAgent.delta > 0 ? " text-emerald-400" : " text-primary"}>
-                      {" "}({selectedAgent.delta > 0 ? "+" : ""}{selectedAgent.delta.toFixed(1)}%)
-                    </span>
-                  )}
-                </p>
               </div>
 
               {/* View Full Report */}

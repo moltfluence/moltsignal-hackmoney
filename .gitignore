@@ -10,3 +10,4 @@ pnpm-lock.yaml
 *.tsbuildinfo
 .vercel
 .env.example
+.env*.local

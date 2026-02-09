@@ -1,7 +1,8 @@
 import { concat, encodeAbiParameters, keccak256, stringToHex, type Hex } from "viem";
 
+// Updated typehash for USDC-based contract
 const SETTLEMENT_TYPEHASH = keccak256(
-  stringToHex("Settlement(address agent,uint96 payoutWei,uint32 adsScore,bytes32 proofHash)"),
+  stringToHex("Settlement(address agent,uint96 payoutUsdc,uint32 adsScore,bytes32 proofHash)"),
 );
 const ATTESTATION_TYPEHASH = keccak256(
   stringToHex("Attestation(address agent,int32 adsDelta,uint32 adsAfter,bytes32 metricsHash)"),
@@ -10,7 +11,7 @@ const ATTESTATION_TYPEHASH = keccak256(
 export function hashSettlementRows(
   rows: Array<{
     agent: `0x${string}`;
-    payoutWei: bigint;
+    payoutUsdc: bigint;
     adsScore: number;
     proofHash: `0x${string}`;
   }>,
@@ -25,7 +26,7 @@ export function hashSettlementRows(
           { type: "uint32" },
           { type: "bytes32" },
         ],
-        [SETTLEMENT_TYPEHASH, row.agent, row.payoutWei, row.adsScore, row.proofHash],
+        [SETTLEMENT_TYPEHASH, row.agent, row.payoutUsdc, row.adsScore, row.proofHash],
       ),
     ),
   );

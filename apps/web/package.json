@@ -5,15 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "build": "prisma generate --schema=../../prisma/schema.prisma && next build",
+    "start": "next start",
+    "postinstall": "prisma generate --schema=../../prisma/schema.prisma"
   },
   "dependencies": {
     "@erc7824/nitrolite": "^0.5.0",
     "@molt/shared": "workspace:*",
+    "@molt/worker": "workspace:*",
     "@prisma/client": "^6.2.1",
     "d3": "^7.9.0",
-    "next": "15.1.4",
+    "next": "15.5.12",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "recharts": "^2.15.0",

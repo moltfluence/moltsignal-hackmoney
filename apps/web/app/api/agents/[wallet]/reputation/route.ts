@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { jsonErr, jsonOk } from "@/lib/http";
 
 export async function GET(_: Request, context: { params: Promise<{ wallet: string }> }) {
   try {
@@ -18,10 +18,10 @@ export async function GET(_: Request, context: { params: Promise<{ wallet: strin
     });
 
     if (!agent) {
-      return NextResponse.json({ error: "agent not found" }, { status: 404 });
+      return jsonErr("agent not found", { status: 404 });
     }
 
-    return NextResponse.json({
+    return jsonOk({
       wallet: agent.wallet,
       moltbookHandle: agent.moltbookHandle,
       currentAds: agent.currentAds,
@@ -34,6 +34,6 @@ export async function GET(_: Request, context: { params: Promise<{ wallet: strin
       })),
     });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    return jsonErr((error as Error).message, { status: 400 });
   }
 }

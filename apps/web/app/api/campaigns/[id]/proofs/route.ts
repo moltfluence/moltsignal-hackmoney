@@ -1,23 +1,31 @@
 import { fetchMoltbookSnapshotV2, hashCanonicalJson, proofDigest, submitProofSchema } from "@molt/shared";
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAllowlist, getChainId } from "@/lib/env";
 import { verifyRawDigestSignature } from "@/lib/signature";
 import { maybePayYellowForValidProof } from "@/lib/yellow";
+import { jsonErr, jsonOk, requestIp } from "@/lib/http";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const ip = requestIp(req);
+    const rl = rateLimit(`proof:${ip}`, { limit: 180, windowMs: 60_000 });
+    if (!rl.ok) {
+      return jsonErr("rate limited", { status: 429, retryAfterSeconds: rl.retryAfterSeconds });
+    }
+
     const params = await context.params;
     const campaignId = Number(params.id);
     const payload = submitProofSchema.parse(await req.json());
 
     const campaign = await db.campaign.findUnique({ where: { id: campaignId } });
     if (!campaign) {
-      return NextResponse.json({ error: "campaign not found" }, { status: 404 });
+      return jsonErr("campaign not found", { status: 404 });
     }
 
+    const chainId = getChainId();
     const digest = proofDigest(
-      getChainId(),
+      chainId,
       campaign.chainCampaignId,
       payload.wallet as `0x${string}`,
       payload.postUrl,
@@ -29,12 +37,18 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       payload.signature as `0x${string}`,
     );
     if (!ok) {
-      return NextResponse.json({ error: "invalid signature" }, { status: 401 });
+      return jsonErr("invalid signature", {
+        status: 401,
+        hint:
+          `Sign SUBMIT_PROOF as an EIP-191 raw message. ` +
+          `Expected: chainId=${chainId}, chainCampaignId=${campaign.chainCampaignId.toString()}, wallet=${payload.wallet}, postUrlHash=keccak256(postUrl). ` +
+          `You can fetch the exact digest at /api/digests/proof?campaignId=${campaignId}&wallet=${payload.wallet}&postUrl=${encodeURIComponent(payload.postUrl)}`,
+      });
     }
 
     const agent = await db.agent.findUnique({ where: { wallet: payload.wallet } });
     if (!agent) {
-      return NextResponse.json({ error: "agent not registered" }, { status: 404 });
+      return jsonErr("agent not registered", { status: 404, hint: "Call POST /api/agents/register first." });
     }
 
     const participant = await db.campaignParticipant.findUnique({
@@ -46,7 +60,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       },
     });
     if (!participant) {
-      return NextResponse.json({ error: "agent has not joined campaign" }, { status: 400 });
+      return jsonErr("agent has not joined campaign", { status: 400, hint: "Call POST /api/campaigns/:id/join first." });
     }
 
     let snapshot;
@@ -109,8 +123,18 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       }
     }
 
-    return NextResponse.json({ proof });
+    return jsonOk({
+      proof: {
+        id: proof.id,
+        campaignId: proof.campaignId,
+        agentWallet: agent.wallet,
+        postUrl: proof.postUrl,
+        proofHash: proof.proofHash,
+        valid: proof.valid,
+        createdAt: proof.createdAt,
+      },
+    });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    return jsonErr((error as Error).message, { status: 400 });
   }
 }

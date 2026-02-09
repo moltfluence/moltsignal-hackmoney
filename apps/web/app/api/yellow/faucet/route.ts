@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
 import { requireEnv } from "@/lib/env";
+import { jsonErr, jsonOk, requestIp } from "@/lib/http";
+import { rateLimit } from "@/lib/rateLimit";
 
 function assertOperator(req: Request) {
-  const want = process.env.OPERATOR_API_KEY ?? "";
+  const want = process.env.OPERATOR_API_KEY ?? process.env.OPERATOR_KEY ?? "";
   const got = req.headers.get("x-operator-key") ?? "";
   if (!want || got !== want) {
     throw new Error("unauthorized");
@@ -11,10 +12,16 @@ function assertOperator(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const ip = requestIp(req);
+    const rl = rateLimit(`operator:yellowFaucet:${ip}`, { limit: 10, windowMs: 60_000 });
+    if (!rl.ok) {
+      return jsonErr("rate limited", { status: 429, retryAfterSeconds: rl.retryAfterSeconds });
+    }
+
     assertOperator(req);
 
     if ((process.env.YELLOW_ENABLED ?? "false").toLowerCase() !== "true") {
-      return NextResponse.json({ error: "YELLOW_ENABLED is false" }, { status: 400 });
+      return jsonErr("YELLOW_ENABLED is false", { status: 400 });
     }
 
     const faucetUrl = process.env.YELLOW_FAUCET_URL ?? "https://clearnet-sandbox.yellow.com/faucet/requestTokens";
@@ -32,14 +39,13 @@ export async function POST(req: Request) {
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      return NextResponse.json({ error: "faucet request failed", details: json }, { status: 502 });
+      return jsonErr("faucet request failed", { status: 502 });
     }
 
-    return NextResponse.json({ ok: true, sender: sender.address, response: json });
+    return jsonOk({ sender: sender.address, response: json });
   } catch (error) {
     const msg = (error as Error).message || "error";
     const status = msg === "unauthorized" ? 401 : 400;
-    return NextResponse.json({ error: msg }, { status });
+    return jsonErr(msg, { status });
   }
 }
-

@@ -32,6 +32,9 @@ export async function GET(req: Request) {
     discovery: {
       skillMd: `${bz}/skill.md`,
       skillJson: `${bz}/skill.json`,
+      heartbeatMd: `${bz}/heartbeat.md`,
+      messagingMd: `${bz}/messaging.md`,
+      apiSigningDocs: `${bz}/docs/api-signing`,
     },
     api: {
       public: {
@@ -82,4 +85,3 @@ export async function GET(req: Request) {
     },
   });
 }
-

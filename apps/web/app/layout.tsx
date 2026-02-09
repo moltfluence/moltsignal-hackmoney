@@ -1,12 +1,6 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export const metadata: Metadata = {
   title: "Moltfluence",
@@ -26,7 +20,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={`${inter.variable} bg-background-dark text-white antialiased overflow-hidden`}>
+      <body className="bg-background-dark text-white antialiased overflow-hidden">
         <div className="flex h-screen w-full">
           <Sidebar />
           <main className="flex-1 ml-[88px] h-full overflow-y-auto hide-scrollbar bg-background-dark p-6 md:p-10 lg:p-12">

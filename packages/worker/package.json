@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts",
-    "settle": "tsx src/index.ts"
+    "dev": "tsx src/cli.ts",
+    "settle": "tsx src/cli.ts"
   },
   "dependencies": {
     "@molt/shared": "workspace:*",
@@ -21,5 +21,8 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/ws": "^8.5.13"
+  },
+  "exports": {
+    ".": "./src/index.ts"
   }
 }

@@ -7,7 +7,12 @@ export function requireEnv(name: string): string {
 }
 
 export function getChainId(): number {
-  return Number(process.env.ARC_CHAIN_ID ?? 5042002);
+  const raw = process.env.ARC_CHAIN_ID;
+  const id = Number(raw ?? 5042002);
+  if (!Number.isFinite(id)) {
+    throw new Error(`Invalid ARC_CHAIN_ID: ${raw}`);
+  }
+  return id;
 }
 
 export function getAllowlist(): string[] {
