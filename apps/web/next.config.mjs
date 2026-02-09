@@ -11,7 +11,7 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@molt/shared"],
+  transpilePackages: ["@molt/shared", "@molt/worker"],
   experimental: {
     typedRoutes: true,
     externalDir: true,
