@@ -1,12 +1,7 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { resolve } from "node:path";
-import { existsSync } from "node:fs";
+import { settleCampaign } from "@molt/worker";
 import { db } from "@/lib/db";
 import { jsonErr, jsonOk, requestIp } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
-
-const execFileAsync = promisify(execFile);
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   let campaignId: number | null = null;
@@ -33,23 +28,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
     await db.campaign.update({ where: { id: campaignId }, data: { status: "SETTLING" } });
 
-    const cwd = process.cwd();
-    const guessedRoot =
-      existsSync(resolve(cwd, "pnpm-workspace.yaml")) ? cwd : resolve(cwd, "../..");
-    const workspaceRoot = process.env.MONO_ROOT ?? guessedRoot;
-    const { stdout } = await execFileAsync(
-      "pnpm",
-      ["--filter", "@molt/worker", "--silent", "run", "settle", "--", String(campaignId)],
-      { cwd: workspaceRoot },
-    );
-
-    const result = (() => {
-      try {
-        return JSON.parse(stdout.trim());
-      } catch {
-        return { raw: stdout.trim() };
-      }
-    })();
+    const result = await settleCampaign(campaignId);
 
     return jsonOk({ result });
   } catch (error) {
