@@ -6,7 +6,7 @@ import {
   ORCHESTRATION_STAGES,
   type OrchestrationBinding,
   type OrchestrationConfig,
-} from "./agents/types.js";
+} from "./agents/types";
 
 const here = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(here, "../../../.env") });

@@ -1,4 +1,4 @@
-import { settleCampaign } from "./settleCampaign.js";
+import { settleCampaign } from "./settleCampaign";
 
 async function main() {
   const campaignIdRaw = process.argv[2];

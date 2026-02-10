@@ -1,4 +1,4 @@
-import type { MoltAgentId, OrchestrationStage } from "./types.js";
+import type { MoltAgentId, OrchestrationStage } from "./types";
 
 export const DEFAULT_MAIN_KEY = "main";
 export const DEFAULT_AGENT_ID: MoltAgentId = "settlement-executor";

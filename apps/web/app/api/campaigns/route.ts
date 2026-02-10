@@ -1,4 +1,5 @@
 import { createCampaignSchema } from "@molt/shared";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { createOnchainCampaign } from "@/lib/chain";
 import { jsonErr, jsonOk, requestIp } from "@/lib/http";
@@ -16,6 +17,14 @@ export async function GET() {
   const campaigns = await db.campaign.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
+    include: {
+      milestones: {
+        orderBy: { orderIndex: "asc" },
+        include: {
+          _count: { select: { claims: true } },
+        },
+      },
+    },
   });
 
   // Avoid BigInt serialization issues (chainCampaignId is BigInt).
@@ -33,6 +42,17 @@ export async function GET() {
       status: c.status,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
+      milestones: c.milestones.map((m) => ({
+        id: m.id,
+        task: m.task,
+        rewardUsdc: m.rewardUsdc,
+        maxAgents: m.maxAgents,
+        orderIndex: m.orderIndex,
+        requiresMilestoneId: m.requiresMilestoneId,
+        keywords: m.keywords,
+        status: m.status,
+        claimedCount: m._count.claims,
+      })),
     })),
   });
 }
@@ -72,6 +92,45 @@ export async function POST(req: Request) {
       },
     });
 
+    // Create milestones if provided
+    const milestones: Array<{ id: number; task: string; rewardUsdc: string; maxAgents: number; orderIndex: number }> = [];
+    if (payload.milestones && payload.milestones.length > 0) {
+      // First pass: create milestones without requires links
+      const milestoneRecords = [];
+      for (const ms of payload.milestones) {
+        const record = await db.milestone.create({
+          data: {
+            campaignId: campaign.id,
+            task: ms.task,
+            rewardUsdc: String(ms.rewardUsdc),
+            maxAgents: ms.maxAgents ?? 10,
+            orderIndex: ms.orderIndex ?? 0,
+            keywords: ms.keywords ? ms.keywords : Prisma.JsonNull,
+            status: "OPEN",
+          },
+        });
+        milestoneRecords.push(record);
+        milestones.push({
+          id: record.id,
+          task: record.task,
+          rewardUsdc: record.rewardUsdc,
+          maxAgents: record.maxAgents,
+          orderIndex: record.orderIndex,
+        });
+      }
+
+      // Second pass: link requiresMilestoneId (uses index into the milestones array)
+      for (let i = 0; i < payload.milestones.length; i++) {
+        const reqIdx = payload.milestones[i].requiresMilestoneIndex;
+        if (reqIdx !== undefined && reqIdx >= 0 && reqIdx < milestoneRecords.length) {
+          await db.milestone.update({
+            where: { id: milestoneRecords[i].id },
+            data: { requiresMilestoneId: milestoneRecords[reqIdx].id },
+          });
+        }
+      }
+    }
+
     return jsonOk({
       campaign: {
         id: campaign.id,
@@ -86,6 +145,7 @@ export async function POST(req: Request) {
         status: campaign.status,
         createdAt: campaign.createdAt,
         updatedAt: campaign.updatedAt,
+        milestones,
       },
       txHash: onchain.txHash,
     });

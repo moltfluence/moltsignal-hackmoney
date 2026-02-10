@@ -22,8 +22,8 @@ import {
 import WebSocket from "ws";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Hex, Address } from "viem";
-import { prisma } from "../db.js";
-import { config } from "../config.js";
+import { prisma } from "../db";
+import { config } from "../config";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

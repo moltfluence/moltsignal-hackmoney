@@ -19,6 +19,15 @@ export const createCampaignSchema = z.object({
   premium: z.boolean().default(false),
   yellowEnabled: z.boolean().default(false),
   minProofsPerAgent: z.number().int().min(1).max(50).optional().default(1),
+  keywords: z.array(z.string()).optional(),
+  milestones: z.array(z.object({
+    task: z.string().min(3).max(500),
+    rewardUsdc: z.union([z.string(), z.number()]),
+    maxAgents: z.number().int().min(1).max(1000).optional().default(10),
+    orderIndex: z.number().int().min(0).optional().default(0),
+    requiresMilestoneIndex: z.number().int().min(0).optional(),
+    keywords: z.array(z.string()).optional(),
+  })).optional(),
 });
 
 export const joinCampaignSchema = z.object({
@@ -29,6 +38,7 @@ export const joinCampaignSchema = z.object({
 export const submitProofSchema = z.object({
   wallet: addressSchema,
   postUrl: z.string().url(),
+  milestoneId: z.number().int().optional(),
   claimedMetrics: z.record(z.any()).optional(),
   signature: z.string().regex(/^0x[a-fA-F0-9]+$/),
 });

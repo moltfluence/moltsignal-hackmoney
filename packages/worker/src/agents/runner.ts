@@ -1,11 +1,11 @@
-import { resolveOrchestrationRoute } from "./bindings.js";
-import { enqueueCommandInLane, resolveGlobalLane, resolveSessionLane } from "./queue.js";
+import { resolveOrchestrationRoute } from "./bindings";
+import { enqueueCommandInLane, resolveGlobalLane, resolveSessionLane } from "./queue";
 import type {
   OrchestrationConfig,
   OrchestrationStage,
   ResolvedOrchestrationRoute,
   StageTrace,
-} from "./types.js";
+} from "./types";
 
 type BeforeAgentStartHook = (params: {
   stage: OrchestrationStage;

@@ -5,9 +5,9 @@
  * used in the orchestration runner.
  */
 
-export * from "./types.js";
-export * from "./runner.js";
-export * from "./bindings.js";
-export * from "./queue.js";
-export * from "./sessionKey.js";
-export * from "./YellowSessionAgent.js";
+export * from "./types";
+export * from "./runner";
+export * from "./bindings";
+export * from "./queue";
+export * from "./sessionKey";
+export * from "./YellowSessionAgent";

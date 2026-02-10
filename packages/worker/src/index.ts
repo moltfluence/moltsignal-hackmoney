@@ -1,1 +1,1 @@
-export { settleCampaign } from './settleCampaign.ts';
+export { settleCampaign } from './settleCampaign';

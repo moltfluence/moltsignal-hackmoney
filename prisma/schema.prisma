@@ -22,6 +22,18 @@ enum YellowSessionStatus {
   FAILED
 }
 
+enum MilestoneStatus {
+  OPEN
+  FULL
+  CLOSED
+}
+
+enum MilestoneClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Agent {
   id             Int                    @id @default(autoincrement())
   wallet         String                 @unique
@@ -36,6 +48,7 @@ model Agent {
   scoreRows      ScoreRow[]
   yellowSessions YellowSession[]
   erc8004Feedback Erc8004Feedback[]
+  milestoneClaims MilestoneClaim[]
 
   @@map("agents")
 }
@@ -55,6 +68,7 @@ model Campaign {
   updatedAt      DateTime               @updatedAt
   participants   CampaignParticipant[]
   proofs         ProofSubmission[]
+  milestones     Milestone[]
   scoreRuns      ScoreRun[]
   scoreRows      ScoreRow[]
   settlements    Settlement[]
@@ -80,6 +94,7 @@ model ProofSubmission {
   id                  Int      @id @default(autoincrement())
   campaignId          Int
   agentId             Int
+  milestoneId         Int?
   postUrl             String
   claimedMetrics      Json?
   fetchedSnapshotJson Json
@@ -88,7 +103,9 @@ model ProofSubmission {
   createdAt           DateTime @default(now())
   campaign            Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   agent               Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  milestone           Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
   microRewards        MicroReward[]
+  milestoneClaims     MilestoneClaim[]
 
   @@index([campaignId])
   @@map("proof_submissions")
@@ -192,4 +209,38 @@ model Erc8004Feedback {
 
   @@index([campaignId])
   @@map("erc8004_feedback")
+}
+
+model Milestone {
+  id            Int             @id @default(autoincrement())
+  campaignId    Int
+  task          String
+  rewardUsdc    String
+  maxAgents     Int             @default(10)
+  orderIndex    Int             @default(0)
+  requiresMilestoneId Int?
+  keywords      Json?
+  status        MilestoneStatus @default(OPEN)
+  createdAt     DateTime        @default(now())
+  campaign      Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  claims        MilestoneClaim[]
+  proofs        ProofSubmission[]
+
+  @@index([campaignId])
+  @@map("milestones")
+}
+
+model MilestoneClaim {
+  id                Int                  @id @default(autoincrement())
+  milestoneId       Int
+  agentId           Int
+  proofSubmissionId Int?
+  status            MilestoneClaimStatus @default(APPROVED)
+  claimedAt         DateTime             @default(now())
+  milestone         Milestone            @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  agent             Agent                @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  proofSubmission   ProofSubmission?     @relation(fields: [proofSubmissionId], references: [id], onDelete: SetNull)
+
+  @@unique([milestoneId, agentId])
+  @@map("milestone_claims")
 }

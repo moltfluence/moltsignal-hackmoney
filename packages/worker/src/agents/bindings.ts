@@ -3,14 +3,14 @@ import {
   buildAgentMainSessionKey,
   normalizeAgentId,
   normalizeWallet,
-} from "./sessionKey.js";
+} from "./sessionKey";
 import type {
   OrchestrationBinding,
   OrchestrationConfig,
   OrchestrationStage,
   ResolveOrchestrationRouteInput,
   ResolvedOrchestrationRoute,
-} from "./types.js";
+} from "./types";
 
 function listBindings(config?: OrchestrationConfig): OrchestrationBinding[] {
   return Array.isArray(config?.bindings) ? config.bindings : [];

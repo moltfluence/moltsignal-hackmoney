@@ -123,12 +123,33 @@ export async function fetchMoltbookSnapshotV2(
           const likes = readFirstNumber(json, ["likes", "likeCount", "like_count", "upvotes"]);
           const comments = readFirstNumber(json, ["comments", "commentCount", "comment_count"]);
           const reposts = readFirstNumber(json, ["reposts", "repostCount", "repost_count", "shares"]);
+
+          // Extract author handle for verification
+          const authorHandle =
+            (typeof json?.author_handle === "string" && json.author_handle) ||
+            (typeof json?.authorHandle === "string" && json.authorHandle) ||
+            (typeof json?.author?.handle === "string" && json.author.handle) ||
+            (typeof json?.author?.name === "string" && json.author.name) ||
+            (typeof json?.author === "string" && json.author) ||
+            (typeof json?.handle === "string" && json.handle) ||
+            undefined;
+
+          // Extract post content for keyword verification
+          const postContent =
+            (typeof json?.content === "string" && json.content) ||
+            (typeof json?.body === "string" && json.body) ||
+            (typeof json?.text === "string" && json.text) ||
+            (typeof json?.description === "string" && json.description) ||
+            undefined;
+
           base = {
             ...base,
             impressions: impressions ?? base.impressions,
             likes: likes ?? base.likes,
             comments: comments ?? base.comments,
             reposts: reposts ?? base.reposts,
+            ...(authorHandle ? { authorHandle: authorHandle.trim().toLowerCase() } : {}),
+            ...(postContent ? { content: postContent } : {}),
           };
         }
       }

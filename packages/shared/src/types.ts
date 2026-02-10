@@ -34,6 +34,10 @@ export type AgentMetricsSnapshot = {
   fetchedAt: string;
   sourceUrl: string;
   title?: string;
+  // Author verification: the Moltbook handle of the post author.
+  authorHandle?: string;
+  // Post content for keyword verification.
+  content?: string;
 };
 
 export type AgentScoreInput = {

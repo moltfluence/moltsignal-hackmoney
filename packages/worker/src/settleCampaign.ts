@@ -12,10 +12,10 @@ import {
 } from "@molt/shared";
 import { createPublicClient, createWalletClient, decodeEventLog, defineChain, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { createOrchestrationRunner } from "./agents/runner.js";
-import { getYellowSessionAgent, isYellowEnabled } from "./agents/YellowSessionAgent.js";
-import { prisma } from "./db.js";
-import { config } from "./config.js";
+import { createOrchestrationRunner } from "./agents/runner";
+import { getYellowSessionAgent, isYellowEnabled } from "./agents/YellowSessionAgent";
+import { prisma } from "./db";
+import { config } from "./config";
 
 type SnapshotRow = {
   impressions: number;
