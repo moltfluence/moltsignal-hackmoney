@@ -12,7 +12,7 @@ const GRADIENTS = [
 ];
 
 const SURFACE_ICONS: Record<string, string> = {
-  Moltbook: "menu_book",
+  Moltfluence: "menu_book",
   Twitter: "public",
   Blogs: "rss_feed",
   Discord: "chat",
@@ -35,7 +35,7 @@ export default function AgentsExplorerClient({ agents }: { agents: Agent[] }) {
   const selectedAgent = agents.find((a) => a.id === selectedId) ?? agents[0];
 
   return (
-    <div className="flex flex-col h-full -m-6 md:-m-10 lg:-m-12">
+    <div className="flex flex-col h-[calc(100vh-48px)] -m-6 md:-m-10 lg:-m-12">
       {/* Top Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 gap-4 border-b border-[#372a2a] flex-none bg-background-dark">
         <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -62,10 +62,10 @@ export default function AgentsExplorerClient({ agents }: { agents: Agent[] }) {
             All
           </button>
           <button
-            onClick={() => setSurfaceFilter("Moltbook")}
-            className={`cursor-pointer h-full px-4 flex items-center justify-center rounded text-sm font-medium transition-all ${surfaceFilter === "Moltbook" ? "bg-surface-dark-highlight text-white shadow-sm border border-[#513d3e]" : "text-[#b79fa0] hover:text-white hover:bg-[#372a2a]/50 border border-transparent"}`}
+            onClick={() => setSurfaceFilter("Moltfluence")}
+            className={`cursor-pointer h-full px-4 flex items-center justify-center rounded text-sm font-medium transition-all ${surfaceFilter === "Moltfluence" ? "bg-surface-dark-highlight text-white shadow-sm border border-[#513d3e]" : "text-[#b79fa0] hover:text-white hover:bg-[#372a2a]/50 border border-transparent"}`}
           >
-            Moltbook
+            Moltfluence
           </button>
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function AgentsExplorerClient({ agents }: { agents: Agent[] }) {
                     <div className="col-span-2">
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#372a2a] text-white text-xs font-medium border border-[#513d3e]">
                         <span className="material-symbols-outlined text-[14px]">{SURFACE_ICONS[agent.surfaces[0]] ?? "language"}</span>
-                        {agent.surfaces[0] ?? "Moltbook"}
+                        {agent.surfaces[0] ?? "Moltfluence"}
                       </div>
                     </div>
                     <div className="col-span-2 flex items-baseline gap-1">

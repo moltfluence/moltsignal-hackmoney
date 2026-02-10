@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, withRetry } from "@/lib/db";
 import { formatUnits } from "viem";
 import type {
   Agent,
@@ -44,7 +44,7 @@ function weiToUsdc(wei: string): number {
 }
 
 export async function getAgents(): Promise<Agent[]> {
-  const dbAgents = await db.agent.findMany({
+  const dbAgents = await withRetry(() => db.agent.findMany({
     include: {
       scoreRows: {
         orderBy: { createdAt: "desc" },
@@ -58,7 +58,7 @@ export async function getAgents(): Promise<Agent[]> {
     },
     orderBy: { currentAds: "desc" },
     take: 50,
-  });
+  }));
 
   return dbAgents.map((agent) => {
     const scores = agent.scoreRows;
@@ -109,7 +109,7 @@ export async function getAgents(): Promise<Agent[]> {
             ? "Settling"
             : "Active",
       earnings: 0,
-      surface: "Moltbook",
+      surface: "Moltfluence",
       delta: 0,
     }));
 
@@ -118,8 +118,8 @@ export async function getAgents(): Promise<Agent[]> {
       name: agent.moltbookHandle,
       idHash: truncateAddress(agent.wallet),
       category: "Agent",
-      capability: "MoltSignal participant",
-      surfaces: ["Moltbook"],
+      capability: "Moltfluence participant",
+      surfaces: ["Moltfluence"],
       lastActive: latest ? relativeTime(latest.createdAt) : relativeTime(agent.createdAt),
       adsScore,
       delta,
@@ -141,7 +141,7 @@ export async function getAgents(): Promise<Agent[]> {
 }
 
 export async function getAgentByWallet(wallet: string): Promise<Agent | null> {
-  const agent = await db.agent.findUnique({
+  const agent = await withRetry(() => db.agent.findUnique({
     where: { wallet },
     include: {
       scoreRows: {
@@ -162,7 +162,7 @@ export async function getAgentByWallet(wallet: string): Promise<Agent | null> {
         },
       },
     },
-  });
+  }));
 
   if (!agent) return null;
 
@@ -214,7 +214,7 @@ export async function getAgentByWallet(wallet: string): Promise<Agent | null> {
             ? "Settling"
             : "Active",
       earnings,
-      surface: "Moltbook",
+      surface: "Moltfluence",
       delta: 0,
     };
   });
@@ -224,8 +224,8 @@ export async function getAgentByWallet(wallet: string): Promise<Agent | null> {
     name: agent.moltbookHandle,
     idHash: truncateAddress(agent.wallet),
     category: "Agent",
-    capability: "MoltSignal participant",
-    surfaces: ["Moltbook"],
+    capability: "Moltfluence participant",
+    surfaces: ["Moltfluence"],
     lastActive: latest ? relativeTime(latest.createdAt) : relativeTime(agent.createdAt),
     adsScore,
     delta,
@@ -245,104 +245,117 @@ export async function getAgentByWallet(wallet: string): Promise<Agent | null> {
   };
 }
 
-export async function getCampaigns(): Promise<Campaign[]> {
-  const dbCampaigns = await db.campaign.findMany({
+const CAMPAIGN_INCLUDE = {
+  participants: {
     include: {
-      participants: {
-        include: {
-          agent: true,
-        },
-      },
-      proofs: true,
-      settlements: {
-        orderBy: { createdAt: "desc" },
-      },
-      scoreRows: {
-        orderBy: { createdAt: "desc" },
-      },
+      agent: true,
     },
+  },
+  proofs: true,
+  settlements: {
+    orderBy: { createdAt: "desc" as const },
+  },
+  scoreRows: {
+    orderBy: { createdAt: "desc" as const },
+  },
+};
+
+function mapCampaignRow(c: Awaited<ReturnType<typeof db.campaign.findFirst<{ include: typeof CAMPAIGN_INCLUDE }>>> & Record<string, any>): Campaign {
+  const budgetUsdc = weiToUsdc(c.budgetWei);
+  const totalProofs = c.proofs.length;
+
+  const expectedProofs = c.participants.length * c.minProofsPerAgent;
+  const progress = expectedProofs > 0 ? Math.min(totalProofs / expectedProofs, 1) : 0;
+
+  const statusMap: Record<string, "Active" | "Settling" | "Complete"> = {
+    ACTIVE: "Active",
+    SETTLING: "Settling",
+    SETTLED: "Complete",
+    DRAFT: "Active",
+    FAILED: "Complete",
+  };
+  const status = statusMap[c.status] ?? "Active";
+
+  const totalPayoutWei = c.scoreRows.reduce(
+    (sum: bigint, row: any) => sum + BigInt(row.payoutWei),
+    0n,
+  );
+  const unlockedPayout = weiToUsdc(totalPayoutWei.toString());
+
+  const participants: CampaignParticipant[] = c.participants.map((p: any) => {
+    const agentScoreRow = c.scoreRows.find((r: any) => r.agentId === p.agent.id);
+    return {
+      agentId: p.agent.wallet,
+      verifiedViews: agentScoreRow ? Math.round(agentScoreRow.adsTotal * 1.2) : 0,
+      adsBefore: p.agent.currentAds / 100,
+      adsAfter: agentScoreRow ? agentScoreRow.adsTotal / 100 : p.agent.currentAds / 100,
+      cpvEfficiency: 0.8,
+      payoutUnlocked: agentScoreRow ? weiToUsdc(agentScoreRow.payoutWei) : 0,
+      payoutPending: 0,
+    };
+  });
+
+  const settlements: CampaignSettlement[] = c.settlements.map((s: any, i: number) => ({
+    id: String(s.id),
+    time: relativeTime(s.createdAt),
+    text: i === 0 ? "Settlement completed" : "Settlement submitted",
+    type: (i === 0 ? "payout" : "update") as "payout" | "update",
+  }));
+
+  return {
+    id: String(c.id),
+    name: c.objective.length > 24
+      ? c.objective.slice(0, 21) + "..."
+      : c.objective || `Campaign #${c.id}`,
+    objective: c.objective,
+    surface: "Moltfluence",
+    budget: budgetUsdc,
+    status,
+    cpvModel: c.premium ? "Premium CPV" : "Standard CPV",
+    verifiedViews: totalProofs * 100,
+    currentCpv:
+      budgetUsdc > 0 && totalProofs > 0
+        ? Number((budgetUsdc / (totalProofs * 100)).toFixed(2))
+        : 0,
+    unlockedPayout,
+    totalPayout: budgetUsdc,
+    progress,
+    milestones: [
+      { views: Math.round(expectedProofs * 30), payoutPercent: 30 },
+      { views: Math.round(expectedProofs * 70), payoutPercent: 70 },
+      { views: expectedProofs * 100, payoutPercent: 100 },
+    ],
+    participants,
+    settlements,
+  };
+}
+
+export async function getCampaigns(): Promise<Campaign[]> {
+  const dbCampaigns = await withRetry(() => db.campaign.findMany({
+    include: CAMPAIGN_INCLUDE,
     orderBy: { createdAt: "desc" },
     take: 20,
-  });
+  }));
 
-  return dbCampaigns.map((c) => {
-    const budgetUsdc = weiToUsdc(c.budgetWei);
-    const totalProofs = c.proofs.length;
-
-    // Estimate progress from proofs
-    const expectedProofs = c.participants.length * c.minProofsPerAgent;
-    const progress = expectedProofs > 0 ? Math.min(totalProofs / expectedProofs, 1) : 0;
-
-    const statusMap: Record<string, "Active" | "Settling" | "Complete"> = {
-      ACTIVE: "Active",
-      SETTLING: "Settling",
-      SETTLED: "Complete",
-      DRAFT: "Active",
-      FAILED: "Complete",
-    };
-    const status = statusMap[c.status] ?? "Active";
-
-    // Payout from score rows
-    const totalPayoutWei = c.scoreRows.reduce(
-      (sum, row) => sum + BigInt(row.payoutWei),
-      0n,
-    );
-    const unlockedPayout = weiToUsdc(totalPayoutWei.toString());
-
-    // Participants
-    const participants: CampaignParticipant[] = c.participants.map((p) => {
-      const agentScoreRow = c.scoreRows.find((r) => r.agentId === p.agent.id);
-      return {
-        agentId: p.agent.wallet,
-        verifiedViews: agentScoreRow ? Math.round(agentScoreRow.adsTotal * 1.2) : 0,
-        adsBefore: p.agent.currentAds / 100,
-        adsAfter: agentScoreRow ? agentScoreRow.adsTotal / 100 : p.agent.currentAds / 100,
-        cpvEfficiency: 0.8,
-        payoutUnlocked: agentScoreRow ? weiToUsdc(agentScoreRow.payoutWei) : 0,
-        payoutPending: 0,
-      };
-    });
-
-    // Settlements
-    const settlements: CampaignSettlement[] = c.settlements.map((s, i) => ({
-      id: String(s.id),
-      time: relativeTime(s.createdAt),
-      text: i === 0 ? "Settlement completed" : "Settlement submitted",
-      type: (i === 0 ? "payout" : "update") as "payout" | "update",
-    }));
-
-    return {
-      id: String(c.id),
-      name: c.objective.length > 24
-        ? c.objective.slice(0, 21) + "..."
-        : c.objective || `Campaign #${c.id}`,
-      objective: c.objective,
-      surface: "Moltbook",
-      budget: budgetUsdc,
-      status,
-      cpvModel: c.premium ? "Premium CPV" : "Standard CPV",
-      verifiedViews: totalProofs * 100,
-      currentCpv:
-        budgetUsdc > 0 && totalProofs > 0
-          ? Number((budgetUsdc / (totalProofs * 100)).toFixed(2))
-          : 0,
-      unlockedPayout,
-      totalPayout: budgetUsdc,
-      progress,
-      milestones: [
-        { views: Math.round(expectedProofs * 30), payoutPercent: 30 },
-        { views: Math.round(expectedProofs * 70), payoutPercent: 70 },
-        { views: expectedProofs * 100, payoutPercent: 100 },
-      ],
-      participants,
-      settlements,
-    };
-  });
+  return dbCampaigns.map((c: any) => mapCampaignRow(c));
 }
 
 export async function getCampaignById(id: number): Promise<Campaign | null> {
-  const campaigns = await getCampaigns();
-  return campaigns.find((c) => c.id === String(id)) ?? null;
+  const c = await withRetry(() => db.campaign.findUnique({
+    where: { id },
+    include: CAMPAIGN_INCLUDE,
+  }));
+  if (!c) return null;
+  return mapCampaignRow(c as any);
+}
+
+export async function getAgentNameMap(wallets: string[]): Promise<Map<string, string>> {
+  if (wallets.length === 0) return new Map();
+  const agents = await withRetry(() => db.agent.findMany({
+    where: { wallet: { in: wallets } },
+    select: { wallet: true, moltbookHandle: true },
+  }));
+  return new Map(agents.map((a) => [a.wallet, a.moltbookHandle]));
 }
 
 export function buildNetworkData(agents: Agent[]): {
@@ -416,7 +429,7 @@ export type Erc8004FeedbackInfo = {
 };
 
 export async function getYellowSessionsForCampaign(campaignId: number): Promise<YellowSessionInfo[]> {
-  const sessions = await db.yellowSession.findMany({
+  const sessions = await withRetry(() => db.yellowSession.findMany({
     where: { campaignId },
     include: {
       agent: true,
@@ -425,7 +438,7 @@ export async function getYellowSessionsForCampaign(campaignId: number): Promise<
       },
     },
     orderBy: { createdAt: "desc" },
-  });
+  }));
 
   return sessions.map((s) => ({
     id: s.id,
@@ -446,11 +459,11 @@ export async function getYellowSessionsForCampaign(campaignId: number): Promise<
 }
 
 export async function getErc8004FeedbackForCampaign(campaignId: number): Promise<Erc8004FeedbackInfo[]> {
-  const feedback = await db.erc8004Feedback.findMany({
+  const feedback = await withRetry(() => db.erc8004Feedback.findMany({
     where: { campaignId },
     include: { agent: true },
     orderBy: { createdAt: "desc" },
-  });
+  }));
 
   return feedback.map((f) => ({
     id: f.id,
@@ -465,11 +478,11 @@ export async function getErc8004FeedbackForCampaign(campaignId: number): Promise
 }
 
 export async function getActivityFeed(): Promise<ActivityItem[]> {
-  const recentSettlements = await db.settlement.findMany({
+  const recentSettlements = await withRetry(() => db.settlement.findMany({
     orderBy: { createdAt: "desc" },
     take: 5,
     include: { campaign: true },
-  });
+  }));
 
   return recentSettlements.map((s) => ({
     id: String(s.id),

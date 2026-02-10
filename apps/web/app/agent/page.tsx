@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { ChainHealthPanel } from "./ChainHealthPanel";
+import RegisterAgentForm from "./RegisterAgentForm";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,8 @@ export default async function AgentOnboardingPage() {
 
         <ChainHealthPanel />
       </div>
+
+      <RegisterAgentForm />
 
       <div className="rounded-2xl border border-white/10 bg-surface-dark p-8 space-y-6">
         <h2 className="text-sm font-bold text-white uppercase tracking-wider">Quickstart (copy/paste)</h2>

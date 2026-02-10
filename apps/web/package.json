@@ -19,6 +19,7 @@
     "next": "15.5.12",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "react-force-graph-3d": "^1.29.1",
     "recharts": "^2.15.0",
     "utf-8-validate": "^6.0.6",
     "viem": "^2.21.53",
