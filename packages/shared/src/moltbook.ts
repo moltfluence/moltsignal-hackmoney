@@ -118,7 +118,9 @@ export async function fetchMoltbookSnapshotV2(
           },
         });
         if (res.ok) {
-          const json: any = await res.json().catch(() => null);
+          const raw: any = await res.json().catch(() => null);
+          // Moltbook API wraps data in { success, post: { ... } } — unwrap if present
+          const json: any = raw?.post && typeof raw.post === "object" ? raw.post : raw;
           const impressions = readFirstNumber(json, ["impressions", "views", "viewCount", "view_count"]);
           const likes = readFirstNumber(json, ["likes", "likeCount", "like_count", "upvotes"]);
           const comments = readFirstNumber(json, ["comments", "commentCount", "comment_count"]);

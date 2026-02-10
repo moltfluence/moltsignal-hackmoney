@@ -5,10 +5,16 @@ import {
   decodeEventLog,
   defineChain,
   http,
+  parseAbi,
   parseUnits,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { getChainId, requireEnv } from "./env";
+
+const erc20Abi = parseAbi([
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+]);
 
 function chain() {
   return defineChain({
@@ -53,16 +59,38 @@ export async function createOnchainCampaign(
 ) {
   const { escrowAddress, sponsor, sponsorClient, publicClient } = clients();
   const endTimeSeconds = BigInt(Math.floor(new Date(endTimeIso).getTime() / 1000));
-  const decimals = Number(process.env.ARC_USDC_DECIMALS ?? 18);
+  // USDC on Arc Testnet is 6 decimals (ERC-20 at 0x3600...)
+  const decimals = Number(process.env.ARC_USDC_DECIMALS ?? 6);
   const budgetAtomic = parseUnits(String(budgetUsdc), decimals);
+  const usdcAddress = (process.env.ARC_USDC_ADDRESS ?? "0x3600000000000000000000000000000000000000") as `0x${string}`;
 
+  // Step 1: Ensure the escrow contract has enough USDC allowance
+  const currentAllowance = await publicClient.readContract({
+    address: usdcAddress,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: [sponsor.address, escrowAddress],
+  });
+
+  if (currentAllowance < budgetAtomic) {
+    // Approve a generous amount to avoid repeated approvals
+    const approveAmount = budgetAtomic * 10n;
+    const approveTx = await sponsorClient.writeContract({
+      address: usdcAddress,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [escrowAddress, approveAmount],
+      account: sponsor,
+    });
+    await publicClient.waitForTransactionReceipt({ hash: approveTx });
+  }
+
+  // Step 2: Call createCampaign with 4 args (objective, endTime, budgetUsdc, premium)
   const txHash = await sponsorClient.writeContract({
     address: escrowAddress,
     abi: campaignEscrowAbi,
     functionName: "createCampaign",
-    args: [objective, endTimeSeconds, premium],
-    // Arc uses USDC as the native gas token (18 decimals). Funding is via msg.value.
-    value: budgetAtomic,
+    args: [objective, endTimeSeconds, budgetAtomic, premium],
     account: sponsor,
   });
 
