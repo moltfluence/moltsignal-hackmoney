@@ -137,17 +137,36 @@ export default function CreateCampaignPage() {
             {/* Budget */}
             <div className="space-y-4">
               <label className="text-sm font-bold text-white uppercase tracking-wider">Budget (USDC)</label>
-              <div className="flex items-center gap-6">
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg font-bold">$</span>
                 <input
-                  type="range"
-                  min={1000}
-                  max={500000}
-                  step={1000}
-                  value={budget}
-                  onChange={(e) => setBudget(Number(e.target.value))}
-                  className="flex-1 h-2 bg-[#372a2a] rounded-full appearance-none cursor-pointer accent-primary"
+                  type="text"
+                  inputMode="numeric"
+                  value={budget.toLocaleString()}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    const num = Number(raw);
+                    if (!isNaN(num) && num >= 0) setBudget(num);
+                  }}
+                  className="w-full h-14 rounded-lg bg-black/20 border border-white/10 text-white pl-9 pr-20 text-2xl font-mono font-bold focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
                 />
-                <div className="text-2xl font-bold text-white font-mono min-w-[140px] text-right">${budget.toLocaleString()}</div>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500 uppercase tracking-wider">USDC</span>
+              </div>
+              <div className="flex gap-2">
+                {[1000, 5000, 10000, 50000, 100000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setBudget(amt)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all border ${
+                      budget === amt
+                        ? "bg-primary/10 text-primary border-primary/30"
+                        : "bg-black/20 text-slate-400 border-white/10 hover:text-white hover:border-white/20"
+                    }`}
+                  >
+                    ${amt >= 1000 ? `${amt / 1000}K` : amt}
+                  </button>
+                ))}
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-black/20 border border-white/10">
                 <input type="radio" checked readOnly className="accent-primary" />
